@@ -52,6 +52,8 @@ _To be populated as patterns emerge._ Initial expectations:
 - shadcn-style primitives (Button, Input, Label) live at `@lib/ui/components/*` and are imported directly (`import { Button } from '@lib/ui/components/button'`). Do NOT re-export them through feature `index.ts` — each consumer imports from the canonical path so refactors stay localized.
 - `cva` variant config lives in a sibling `.ts` file (e.g., `button-variants.ts`) not inside the component `.tsx`, so the component module stays component-only for React Fast Refresh (`react-refresh/only-export-components`).
 - For forms with submit buttons, disable the button whenever the domain predicate says the input is invalid. Do not rely on `onSubmit` guards alone — the disabled state communicates intent to the user.
+- **Null-vs-zero for analytical outputs.** Any number field that could be undefined for an input set (e.g., `winRate` on zero closed trades, `avgEntryPx` on a truncated-opens trade) is typed `number | null`. `null` means "no data" and renders as em-dash (`—`); `0` means a real zero result and renders as its numeric form. Formatters in `@lib/ui/format` enforce this convention — pass `null` through, don't coerce to 0.
+- **Tone + provenance on MetricCard.** `MetricCard` takes a `tone` (`'neutral' | 'gain' | 'loss' | 'risk'`) that colours the value, and an optional `provenance` that renders a 2×2px dot with a title-attribute tooltip. Decorative-only (`aria-hidden`); screen readers see just the label and value. When passing a conditional subtext (`cond ? 'x' : undefined`) ensure the prop type allows explicit undefined — `exactOptionalPropertyTypes: true` is strict about this.
 
 ---
 

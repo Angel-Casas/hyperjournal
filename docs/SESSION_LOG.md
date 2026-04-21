@@ -203,3 +203,47 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Priming semantics: `startPosition` on the first fill is the signed pre-window position. Sign encodes direction, absolute value encodes size. HL is trusted on this.
 
 ---
+
+## 2026-04-21 — Phase 1 Session 4a: Analytics metrics + metric cards
+
+**Session goal:** Turn `ReconstructedTrade[]` into a usable analytics view on `/w/:address` — pure `TradeStats` aggregation, TanStack hook, 11 metric cards showing real numbers. No charts (Session 4b).
+
+**Done:**
+
+- `src/entities/trade-stats.ts`: `TradeStats` type — 17 Tier-1 metrics. Nullable fields use `null` to mean "no data"; zero means a real zero.
+- `src/domain/metrics/computeTradeStats.ts` + 15 tests: pure aggregator. Closed-only PnL, win rate, expectancy, profit factor, avg win/loss, drawdown (walk + peak-tracking), avg hold time, long/short split with per-side win rates, best/worst single trade, total fees (across all trades including opens). Real-fixture cross-check: totalPnl matches the sum of reconstructed realizedPnl exactly.
+- `src/features/wallets/hooks/useWalletMetrics.ts` + 3 tests: composes `useUserFills → reconstructTrades → computeTradeStats` via `useMemo`. Returns `{ stats, isLoading, isError, error }`.
+- `src/lib/ui/format.ts` + 18 tests: `formatCurrency`, `formatPercent`, `formatHoldTime`, `formatCompactCount`. All null-aware (render em-dash for no-data).
+- `date-fns@4.1.0` installed — blessed in CLAUDE.md §2, reserved for Session 4b's calendar component.
+- `src/lib/ui/components/metric-card.tsx` + 6 tests: generic analytics card with label, tone-coloured value, optional subtext, optional provenance dot.
+- `src/features/wallets/components/WalletMetricsGrid.tsx`: 11 cards wired to `TradeStats`. Tones adapt to sign; drawdown shows peak-to-trough percent as subtext; expectancy has "per trade" subtext; fees note "across all trades".
+- `src/app/WalletView.tsx` rewritten: drops the "Loaded N fills" placeholder, orchestrates `useWalletMetrics` → grid, preserves loading/error sections.
+- CONVENTIONS.md §4 amended: null-vs-zero convention for analytical outputs, tone + provenance docs for `MetricCard`, note about `exactOptionalPropertyTypes: true` and conditional-prop spreading.
+- Gauntlet clean: **126 tests** (was 84 after Session 3; +42 this session), typecheck + lint + coverage + build all green.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Charts (equity curve, P/L calendar) — Session 4b, by design.
+- Trade history list on `/w/:address` — Session 4b.
+- Tier-2 metrics (Sharpe, Kelly, risk of ruin, stop-loss usage) — BACKLOG for a later analytics session.
+- Per-coin `TradeStats` breakdown — BACKLOG.
+- Filter panel on `/w/:address` — BACKLOG (arrives with 4b's filters).
+
+**Gotchas for next session (Session 4b):**
+
+- `useWalletMetrics` returns `stats: TradeStats | null`. The grid only renders when stats is non-null. Session 4b's charts should follow the same shape — `{ data, isLoading, isError, error }` with memoized pure-domain data transforms.
+- Every domain function under `src/domain/` that takes `ReconstructedTrade[]` and returns aggregates should be co-located with its tests and should NOT touch Dexie, fetch, React, or date-fns' Date (which would make it non-deterministic unless a clock is injected). 4b's calendar helper (bucket trades by day) takes a fills/trades array and returns the bucketed shape; the Date logic goes through date-fns' pure `startOfDay(new Date(ms))` etc.
+- The existing `WalletMetricsGrid` uses `grid-cols-{2,3,4}` responsive breakpoints. 4b's layout should stack the equity curve above the grid on desktop and below on mobile, with the P/L calendar as a separate card.
+- `stats.maxDrawdown` is stored as a positive magnitude. The grid negates it before passing to `formatCurrency` so the card shows `-$X` with loss tone. 4b's drawdown chart should use the positive magnitude for shading and axis labels but still display the sign in text.
+- Sessions 4b and 3+ domain functions share one convention: `Date.now()` / `new Date()` are forbidden in `domain/`. If a metric needs "today," the caller passes `now: number` as a parameter.
+
+**Invariants assumed:**
+
+- `TradeStats.totalPnl` is bit-for-bit equal to the sum of realizedPnl across closed reconstructed trades, which is in turn bit-for-bit equal to HL's own per-coin closedPnl sum. That chain is the correctness guarantee the UI inherits from Session 3.
+- `provenance: 'derived'` on `TradeStats` is the type-level truth: every field is a deterministic aggregation. MetricCard surfaces this via the accent-coloured provenance dot.
+- Formatters NEVER mutate their input or throw. Pass invalid / null → get `—` back.
+- `useMemo` in `useWalletMetrics` has dep `[fills.data]`. TanStack Query returns a stable reference while `data` is unchanged, so the pipeline runs exactly once per successful fetch.
+
+---

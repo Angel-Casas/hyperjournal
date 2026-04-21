@@ -74,3 +74,14 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[maybe]` Scale-in/scale-out pattern labels on `ReconstructedTrade` (`wasScaledIn: boolean`, `wasScaledOut: boolean`). Useful for pattern detection in later phases.
 - `[soon]` `wallet` field on `ReconstructedTrade` is always `null` — the pure domain layer doesn't know the wallet. Session 4's query hook should pass the wallet in as a parameter to `reconstructTrades` and stamp it on every emitted trade.
 - `[maybe]` `provenance: 'observed'` is a single field on the whole `ReconstructedTrade`, but its fields have mixed provenance: `legs[].fill.*` are observed while `avgEntryPx` / `holdTimeMs` / `realizedPnl` are derived. Session 4's tooltip copy will need to distinguish per-field. Consider either a per-field provenance map or changing the trade-level label to `'derived'` when the UI consumes it.
+
+---
+
+## Session 4a deferrals
+
+- `[later]` Tier-2 metrics (Sharpe-like, Kelly, risk of ruin, stop-loss usage rate). Roadmap §19.2. Held for a later analytics session once Tier-1 is in real use and we have a feel for which secondary metrics matter.
+- `[soon]` Per-coin breakdown of `TradeStats`. Right now stats are walletwide; users will likely want "show BTC-only metrics" as a filter. Add a `computeTradeStatsByCoin(trades): Map<coin, TradeStats>` helper.
+- `[soon]` Filter panel on `/w/:address` (date range, asset, side, closed-vs-open). Plan §11.5. Filters compose by pre-filtering `trades` before `computeTradeStats`. Landed after Session 4b so the chart filters apply consistently.
+- `[maybe]` Persisted `WalletAnalyticsSnapshot` in Dexie (plan §13). Today `useWalletMetrics` recomputes on every mount; that's cheap for 2000 fills but would matter if we ever fetch more history. Revisit when performance shows it's needed.
+- `[soon]` Break-even trades (`realizedPnl === 0`) are currently excluded from both winners and losers in `computeTradeStats`. That's standard practice but worth surfacing to users — consider a `breakEvenCount` field on `TradeStats`.
+- `[maybe]` "Profit factor is null" UX — a card that says `—` for profit factor can be confusing when all trades are wins (there IS a meaningful answer: infinity). Consider rendering `∞` instead, or a subtext like `"no losing trades"`.
