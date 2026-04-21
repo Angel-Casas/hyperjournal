@@ -178,4 +178,20 @@ describe('reconstructCoinTrades', () => {
     ];
     expect(() => reconstructCoinTrades('BTC', fills)).toThrow(/oversized close|flip/i);
   });
+
+  it('throws when an Open arrives with the opposite side of an in-progress trade', () => {
+    const fills = [
+      makeFill({ dir: 'Open Long', sz: 1, time: 1, tid: 1 }),
+      makeFill({ dir: 'Open Short', sz: 1, time: 2, tid: 2 }),
+    ];
+    expect(() => reconstructCoinTrades('BTC', fills)).toThrow(/open short while long/i);
+  });
+
+  it('throws when a Close arrives with the opposite side of an in-progress trade', () => {
+    const fills = [
+      makeFill({ dir: 'Open Long', sz: 1, time: 1, tid: 1 }),
+      makeFill({ dir: 'Close Short', sz: 1, time: 2, tid: 2 }),
+    ];
+    expect(() => reconstructCoinTrades('BTC', fills)).toThrow(/close short while long/i);
+  });
 });

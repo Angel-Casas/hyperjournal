@@ -69,4 +69,34 @@ describe('checkRealizedPnl', () => {
     // Confirm the droppedFills detection ran (may be 1 in this synthetic case).
     expect(droppedFills.length).toBeGreaterThanOrEqual(0);
   });
+
+  it('returns matched: true for a coin with only open trades (no close legs)', () => {
+    // Synthesize a one-open-only scenario. reconPerCoin will have the coin
+    // with sum=0; hlPerCoin will NOT have the coin (no close fills exist).
+    // The oracle must handle the asymmetric-coin case without error.
+    const openOnly: RawFill = {
+      coin: 'TEST',
+      px: 100,
+      sz: 1,
+      side: 'B',
+      time: 1,
+      startPosition: 0,
+      dir: 'Open Long',
+      closedPnl: 0,
+      hash: '',
+      oid: 0,
+      crossed: true,
+      fee: 0,
+      tid: 1,
+      feeToken: 'USDC',
+      twapId: null,
+    };
+    const trades = reconstructTrades([openOnly]);
+    const result = checkRealizedPnl([openOnly], trades);
+    expect(result.matched).toBe(true);
+    const cmp = result.perCoin.get('TEST')!;
+    expect(cmp.hlSum).toBe(0);
+    expect(cmp.reconstructedSum).toBe(0);
+    expect(cmp.delta).toBe(0);
+  });
 });

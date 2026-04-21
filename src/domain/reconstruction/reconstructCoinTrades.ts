@@ -54,7 +54,7 @@ export function reconstructCoinTrades(
   };
 
   for (const fill of fills) {
-    const role = dirToRole(fill.dir);
+    const role = dirToRole(fill.dir, coin, fill.tid);
 
     if (role === 'open') {
       hasSeenOpen = true;
@@ -105,7 +105,7 @@ export function reconstructCoinTrades(
   return out;
 }
 
-function dirToRole(dir: string): 'open' | 'close' {
+function dirToRole(dir: string, coin: string, tid: number): 'open' | 'close' {
   switch (dir) {
     case 'Open Long':
     case 'Open Short':
@@ -114,7 +114,9 @@ function dirToRole(dir: string): 'open' | 'close' {
     case 'Close Short':
       return 'close';
     default:
-      throw new Error(`reconstructCoinTrades: unknown dir "${dir}"`);
+      throw new Error(
+        `reconstructCoinTrades: ${coin}: unknown dir "${dir}" (tid=${tid})`,
+      );
   }
 }
 
