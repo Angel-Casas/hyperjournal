@@ -1,10 +1,29 @@
-// The canonical RawFill type is inferred from the Zod schema defined in
-// src/lib/validation/hyperliquid.ts. This module re-exports it so consumers
-// outside lib/ can import from @entities without depending on validation.
-//
-// Defined here (not in validation) because entities is a lower-level layer
-// per CLAUDE.md §4; the Zod schema is the authoring source, the entity is the
-// stable name external layers refer to.
-//
-// Session 2a Task 3 populates this re-export once the schema exists.
-export type RawFill = never;
+/**
+ * A single fill — the stable internal shape every layer above `lib/validation`
+ * consumes. Defined here (not in validation) so that entities remains the
+ * lower-level, dependency-free contract per CLAUDE.md §4. The Zod schema in
+ * `lib/validation/hyperliquid.ts` is verified at compile time to produce this
+ * exact shape; if Hyperliquid's wire format ever diverges, the schema breaks
+ * there, not here.
+ *
+ * Numeric fields (`px`, `sz`, `fee`, `startPosition`, `closedPnl`) are real
+ * `number`s after boundary coercion — consumers never see HL's string-encoded
+ * form.
+ */
+export type RawFill = {
+  readonly coin: string;
+  readonly px: number;
+  readonly sz: number;
+  readonly side: 'B' | 'A';
+  readonly time: number;
+  readonly startPosition: number;
+  readonly dir: string;
+  readonly closedPnl: number;
+  readonly hash: string;
+  readonly oid: number;
+  readonly crossed: boolean;
+  readonly fee: number;
+  readonly tid: number;
+  readonly feeToken: string;
+  readonly twapId: number | null;
+};
