@@ -95,3 +95,15 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[later]` Surface spot-trade data in a separate view. Today HyperJournal filters out HL's spot fills (`coin: @N`, `dir: Buy|Sell`) from the perp reconstruction pipeline because the accounting model is fundamentally different. A user who also does spot will see nothing for those coins. A future session could add a `domain/spot/` module if demand emerges.
 - `[soon]` Add `isForceClose: boolean` (or a more specific `closeReason: 'user' | 'auto-deleveraging' | 'liquidation'` tag) on `TradeLeg` so the UI can visually distinguish forced closes. Currently an ADL'd trade looks identical to a user-closed one on the metrics grid.
 - `[maybe]` The `checkRealizedPnl` oracle's close-role detection (`fill.dir === 'Close Long' || 'Close Short' || 'Auto-Deleveraging' || 'Liquidation'`) is duplicated in both `reconstructCoinTrades.dirToRole` and the oracle. Extract an `isCloseRoleDir(dir)` helper if more dir values surface.
+
+---
+
+## Session 4b deferrals
+
+- `[soon]` Playwright E2E smoke covering the full `/w/:address` flow: paste wallet → metrics grid renders → equity curve tooltip shows real values → calendar cell hover → history list scrolls. The browser-specific behavior (virtualizer window, ECharts real render) is not unit-testable.
+- `[maybe]` Local-timezone mode for the P/L calendar. Today buckets are UTC (consistent across viewers); user might prefer local. A UI toggle + `buildPnlCalendar(trades, { timezone })` would cover it.
+- `[maybe]` Equity-curve benchmarks (e.g., overlay a "100% HYPE hodl" line, or "BTC price × initial equity") to contextualize performance. Plan §19 hints at this under Tier-3.
+- `[maybe]` Export-chart-as-PNG via ECharts' `getDataURL()`. Useful for sharing; plan §2.1 mentions shareability as a secondary goal.
+- `[maybe]` Click on a calendar day → filter trade-history list to that day. Needs a shared "active filter" state (Zustand or route param). Tie to the BACKLOG filter-panel entry.
+- `[soon]` ECharts adds ~1MB to the bundle. Consider tree-shaking via `echarts/core` + individual chart/component imports instead of `import * as echarts from 'echarts'`. Saves ~400-600KB gzipped. Measure first, optimize if Session 5's PWA install flow is slow.
+- `[maybe]` Equity curve on very long histories may be dense. Consider downsampling (LTTB or naïve bucketing) when points > 2000.

@@ -247,3 +247,44 @@ Every session **must** add an entry before closing. The goal is that a future se
 - `useMemo` in `useWalletMetrics` has dep `[fills.data]`. TanStack Query returns a stable reference while `data` is unchanged, so the pipeline runs exactly once per successful fetch.
 
 ---
+
+## 2026-04-21 — Phase 1 Session 4b: Charts + P/L calendar + trade history
+
+**Session goal:** Layer the three headline visualizations on top of Session 4a's metrics grid — equity curve, P/L calendar heatmap, and virtualized trade history. End state: `/w/:address` is a real analytics dashboard with live charts for any wallet.
+
+**Done:**
+
+- `echarts@5.5.1` installed. `src/lib/charts/EChartsBase.tsx` — thin React wrapper owning init/setOption/resize/dispose lifecycle per ADR-0007. Consumer passes a complete `EChartsOption`; wrapper never constructs options itself. 6 tests via `vi.hoisted()` + `vi.mock('echarts')` — real ECharts needs canvas + layout that jsdom lacks, so the tests verify lifecycle calls against a stub.
+- `@tanstack/react-virtual@3.10.8` installed for trade-history virtualization.
+- Pure-domain helpers: `buildEquityCurve(trades)` (4 tests) returns `[{time, equity, coin, pnl}]` time-sorted with running equity; `buildPnlCalendar(trades)` (5 tests) returns `Map<YYYY-MM-DD, {date, pnl, tradeCount}>` bucketed by UTC day. Open trades excluded from both.
+- `EquityCurveChart` + `PnlCalendarChart` in `features/wallets/components/`. Each memoizes its `buildX` result, builds an `EChartsOption` with HyperJournal's dark HSL tokens (hoisted into a `TOKEN` const), and renders through `EChartsBase`. Custom tooltips formatted to match the metrics grid. Empty states when no closed trades.
+- `TradeHistoryList` virtualized table with 6 columns (coin, side, opened date, status, PnL, held), sorted by effective timestamp (closedAt or openedAt) descending — most-recent-first. Open trades show em-dash in PnL and held columns. 300px viewport, ~40px rows, virtualized via `useVirtualizer`.
+- `useWalletMetrics` now returns `{ stats, trades, isLoading, isError, error }` so the charts consume trades from the same memoized pipeline as the metrics grid (no second pass). `WalletView` stacks the four visualizations inside the existing layout.
+- CONVENTIONS.md §11 added covering ECharts integration, option-memoization, HSL-tokens-in-charts exception to §5, chart-testing pattern, and virtualized-list testing caveat.
+- src/tests/setup.ts polyfills `ResizeObserver` (jsdom lacks it; ECharts and react-virtual both reference it).
+- End state: **156 tests** passing (was 132 after 4a + 4a.1; +24 this session). Gauntlet clean. Build produces 1.4MB precache (ECharts dominates; tree-shaking is a BACKLOG item).
+
+**Decisions made:** ADR-0007 (raw `echarts` + hand-written 40-LOC wrapper, no `echarts-for-react`).
+
+**Deferred / not done:**
+
+- Playwright E2E on `/w/:address` — BACKLOG. jsdom can't verify virtualizer window or ECharts render; browser-level coverage is the right tool.
+- Local-timezone calendar, equity benchmarks, export-as-PNG, day-click-to-filter — all BACKLOG.
+- Bundle-size trim via ECharts tree-shaking (`echarts/core` + individual parts) — BACKLOG; measure first.
+
+**Gotchas for next session (Session 5 or Phase 2):**
+
+- `TOKEN` consts in `EquityCurveChart.tsx` and `PnlCalendarChart.tsx` duplicate HSL values. If the palette ever changes, update both. A shared `@lib/charts/tokens.ts` would be cleaner; skipped for now since we only have two chart components.
+- ECharts is imported as `import * as echarts from 'echarts'` — the whole library ships. Tree-shaking to `echarts/core` + specific chart imports (LineChart, HeatmapChart, CalendarComponent, etc.) saves hundreds of KB. Do this during Session 5's PWA polish.
+- `ResizeObserver` polyfill in `src/tests/setup.ts` is a no-op stub — it satisfies the module-load-time reference but doesn't actually trigger resize callbacks. That's fine for our tests but worth knowing if future tests need real resize behavior.
+- Virtualizer returns empty `getVirtualItems()` in jsdom because layout is zero. Component tests verify structure (headers, empty-state, rowgroup), not row content. Playwright will fill the gap.
+- The `TOKEN` exception to CONVENTIONS.md §5 (hardcoded HSL in chart options) is narrow: it applies ONLY to ECharts option objects. React components continue to use Tailwind semantic classes.
+
+**Invariants assumed:**
+
+- `EChartsBase` never mutates option objects. Consumers own the option shape entirely.
+- Option objects passed to `EChartsBase` are memoized; identical content with a new reference triggers a needless `setOption`. Enforced by convention, not by the wrapper.
+- Domain helpers (`buildEquityCurve`, `buildPnlCalendar`) are pure — no `Date.now()` or `new Date()` outside of UTC-accessor calls on a given input timestamp.
+- The four visualizations on `/w/:address` consume the SAME `trades` reference from `useWalletMetrics`. If a view needs a filtered subset, the caller filters and passes a different prop — the domain transforms don't know about filtering.
+
+---
