@@ -82,7 +82,19 @@ export function reconstructCoinTrades(
           `reconstructCoinTrades: ${coin}: dangling close fill at tid=${fill.tid} (not a leading-truncation case)`,
         );
       }
-      const closeSide: TradeSide = fill.dir === 'Close Long' ? 'long' : 'short';
+      // Derive the side being closed. For explicit Close Long / Close Short
+      // dirs it is named. For forced closes (Auto-Deleveraging, Liquidation)
+      // HL omits the side name — the position's sign at the time of the
+      // fill disambiguates: positive startPosition means a long is being
+      // reduced, negative means a short.
+      let closeSide: TradeSide;
+      if (fill.dir === 'Close Long') {
+        closeSide = 'long';
+      } else if (fill.dir === 'Close Short') {
+        closeSide = 'short';
+      } else {
+        closeSide = fill.startPosition > 0 ? 'long' : 'short';
+      }
       if (closeSide !== side) {
         throw new Error(
           `reconstructCoinTrades: ${coin}: close ${closeSide} while ${side} trade is open (tid=${fill.tid})`,
@@ -105,6 +117,12 @@ export function reconstructCoinTrades(
   return out;
 }
 
+// The four "Close" variants here are all mechanically identical: each
+// reduces |position| toward zero and carries a realized closedPnl. The
+// forced-close variants (Auto-Deleveraging, Liquidation) are emitted when
+// a position is involuntarily unwound — they behave the same at the
+// reconstruction layer, though Session 4+ may want to surface them
+// distinctly in the UI (they are worth annotating in a trade's history).
 function dirToRole(dir: string, coin: string, tid: number): 'open' | 'close' {
   switch (dir) {
     case 'Open Long':
@@ -112,6 +130,8 @@ function dirToRole(dir: string, coin: string, tid: number): 'open' | 'close' {
       return 'open';
     case 'Close Long':
     case 'Close Short':
+    case 'Auto-Deleveraging':
+    case 'Liquidation':
       return 'close';
     default:
       throw new Error(

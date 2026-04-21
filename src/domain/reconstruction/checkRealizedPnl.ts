@@ -46,11 +46,18 @@ export function checkRealizedPnl(
     }
   }
 
-  // HL sum per coin, only over fills that became legs
+  // HL sum per coin, only over close-role fills that became legs. "Close-
+  // role" includes the explicit Close Long / Close Short dirs plus the
+  // forced-close variants (Auto-Deleveraging, Liquidation) — all of these
+  // realize PnL in HL's accounting the same way.
   const hlPerCoin = new Map<string, number>();
   for (const fill of fills) {
     if (!includedTids.has(fill.tid)) continue;
-    const isClose = fill.dir === 'Close Long' || fill.dir === 'Close Short';
+    const isClose =
+      fill.dir === 'Close Long' ||
+      fill.dir === 'Close Short' ||
+      fill.dir === 'Auto-Deleveraging' ||
+      fill.dir === 'Liquidation';
     if (!isClose) continue;
     hlPerCoin.set(fill.coin, (hlPerCoin.get(fill.coin) ?? 0) + fill.closedPnl);
   }

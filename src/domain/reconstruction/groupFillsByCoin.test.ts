@@ -48,14 +48,41 @@ describe('groupFillsByCoin', () => {
     expect(out.get('ETH')).toHaveLength(1);
   });
 
-  it('sorts each coin bucket by time ascending, with tid as a stable tiebreaker', () => {
+  it('sorts by time ascending across different timestamps', () => {
     const input = [
-      makeFill({ coin: 'BTC', time: 10, tid: 2 }),
-      makeFill({ coin: 'BTC', time: 10, tid: 1 }),
-      makeFill({ coin: 'BTC', time: 5, tid: 3 }),
+      makeFill({ coin: 'BTC', time: 10, tid: 2, startPosition: 0 }),
+      makeFill({ coin: 'BTC', time: 5, tid: 3, startPosition: 0 }),
     ];
     const out = groupFillsByCoin(input).get('BTC')!;
-    expect(out.map((f) => f.tid)).toEqual([3, 1, 2]);
+    expect(out.map((f) => f.time)).toEqual([5, 10]);
+  });
+
+  it('chains same-timestamp fills by startPosition (execution order), not by tid', () => {
+    // Two Open Long fills share a millisecond. Execution order is
+    // startPosition 0 → 5 → 15 (each fill adds to the position). The
+    // tids here are deliberately out of that order to prove we do NOT
+    // rely on tid for intra-ms ordering.
+    const input = [
+      // Appears first in input but is actually the SECOND execution:
+      makeFill({ coin: 'BTC', time: 10, tid: 999, dir: 'Open Long', sz: 10, startPosition: 5 }),
+      // Appears second in input but is the FIRST execution:
+      makeFill({ coin: 'BTC', time: 10, tid: 1, dir: 'Open Long', sz: 5, startPosition: 0 }),
+    ];
+    const out = groupFillsByCoin(input).get('BTC')!;
+    expect(out.map((f) => f.startPosition)).toEqual([0, 5]);
+    expect(out.map((f) => f.tid)).toEqual([1, 999]);
+  });
+
+  it('chains same-timestamp close fills correctly', () => {
+    // Two Close Long fills at the same ms. Execution: startPosition
+    // 1225.7 → 458.9 → 0 (scaling down). The fill with startPosition
+    // 458.9 must come SECOND even though its tid is smaller.
+    const input = [
+      makeFill({ coin: 'SNX', time: 10, tid: 915, dir: 'Close Long', sz: 458.9, startPosition: 458.9 }),
+      makeFill({ coin: 'SNX', time: 10, tid: 815, dir: 'Close Long', sz: 766.8, startPosition: 1225.7 }),
+    ];
+    const out = groupFillsByCoin(input).get('SNX')!;
+    expect(out.map((f) => f.startPosition)).toEqual([1225.7, 458.9]);
   });
 
   it('returns a Map whose iteration order matches first-seen insertion order', () => {
@@ -76,7 +103,23 @@ describe('groupFillsByCoin', () => {
     expect(total).toBe(realFills.length);
   });
 
-  it('produces per-coin arrays sorted by time in the real fixture', () => {
+  it('produces per-coin arrays in execution order on the real fixture', () => {
+    // Execution-order invariant: adjacent fills must either be on
+    // distinct timestamps (time ascending) OR same timestamp with the
+    // next fill's startPosition matching the previous fill's positionAfter.
+    const ZERO_TOL = 1e-9;
+    const signedDelta = (f: RawFill): number => {
+      switch (f.dir) {
+        case 'Open Long':
+        case 'Close Short':
+          return f.sz;
+        case 'Open Short':
+        case 'Close Long':
+          return -f.sz;
+        default:
+          return 0;
+      }
+    };
     const grouped = groupFillsByCoin(realFills);
     for (const arr of grouped.values()) {
       for (let i = 1; i < arr.length; i++) {
@@ -84,7 +127,8 @@ describe('groupFillsByCoin', () => {
         const curr = arr[i]!;
         expect(curr.time).toBeGreaterThanOrEqual(prev.time);
         if (curr.time === prev.time) {
-          expect(curr.tid).toBeGreaterThanOrEqual(prev.tid);
+          const expected = prev.startPosition + signedDelta(prev);
+          expect(Math.abs(curr.startPosition - expected)).toBeLessThanOrEqual(ZERO_TOL);
         }
       }
     }

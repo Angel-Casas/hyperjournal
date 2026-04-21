@@ -153,6 +153,50 @@ describe('reconstructCoinTrades', () => {
     expect(trades[0]!.avgEntryPx).toBeNull();
   });
 
+  it('treats Auto-Deleveraging as a forced close on the current side', () => {
+    // Real BRENTOIL scenario: user was short 11.85, exchange ADL'd the
+    // position at 98.472, realizing +118.47 PnL.
+    const fills = [
+      makeFill({ dir: 'Open Short', px: 108.47, sz: 11.85, time: 1, tid: 1, startPosition: 0 }),
+      makeFill({
+        dir: 'Auto-Deleveraging',
+        px: 98.472,
+        sz: 11.85,
+        time: 2,
+        tid: 2,
+        startPosition: -11.85,
+        closedPnl: 118.4763,
+      }),
+    ];
+    const trades = reconstructCoinTrades('BRENTOIL', fills);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]!.side).toBe('short');
+    expect(trades[0]!.status).toBe('closed');
+    expect(trades[0]!.realizedPnl).toBeCloseTo(118.4763, 4);
+    expect(trades[0]!.legs[1]!.role).toBe('close');
+  });
+
+  it('treats Liquidation (user-side) as a forced close on the current side', () => {
+    const fills = [
+      makeFill({ dir: 'Open Long', px: 100, sz: 10, time: 1, tid: 1, startPosition: 0 }),
+      makeFill({
+        dir: 'Liquidation',
+        px: 80,
+        sz: 10,
+        time: 2,
+        tid: 2,
+        startPosition: 10,
+        closedPnl: -200,
+      }),
+    ];
+    const trades = reconstructCoinTrades('BTC', fills);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]!.side).toBe('long');
+    expect(trades[0]!.status).toBe('closed');
+    expect(trades[0]!.realizedPnl).toBeCloseTo(-200, 4);
+    expect(trades[0]!.legs[1]!.role).toBe('close');
+  });
+
   it('throws a typed error on a mid-stream dangling close (corruption, not truncation)', () => {
     const fills = [
       // Normal open → close cycle (hasSeenOpen = true afterwards)
@@ -166,7 +210,7 @@ describe('reconstructCoinTrades', () => {
 
   it('throws on an unknown dir value', () => {
     const fills = [
-      makeFill({ dir: 'Liquidation' }), // runtime guard test — dir is string so no TS error, but dirToRole must throw
+      makeFill({ dir: 'Funding' }), // runtime guard test — dir is string so no TS error, but dirToRole must throw. 'Liquidation' is a valid dir now (see Auto-Deleveraging / Liquidation handling); 'Funding' is deliberately unknown.
     ];
     expect(() => reconstructCoinTrades('BTC', fills)).toThrow(/unknown dir/i);
   });

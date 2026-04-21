@@ -85,3 +85,13 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[maybe]` Persisted `WalletAnalyticsSnapshot` in Dexie (plan §13). Today `useWalletMetrics` recomputes on every mount; that's cheap for 2000 fills but would matter if we ever fetch more history. Revisit when performance shows it's needed.
 - `[soon]` Break-even trades (`realizedPnl === 0`) are currently excluded from both winners and losers in `computeTradeStats`. That's standard practice but worth surfacing to users — consider a `breakEvenCount` field on `TradeStats`.
 - `[maybe]` "Profit factor is null" UX — a card that says `—` for profit factor can be confusing when all trades are wins (there IS a meaningful answer: infinity). Consider rendering `∞` instead, or a subtext like `"no losing trades"`.
+
+---
+
+## Session 4a.1 — real-wallet reconstruction fixes
+
+Issues surfaced only against the live full-wallet dataset (not the 100-fill committed fixture), fixed as a hotfix commit during the same session:
+
+- `[later]` Surface spot-trade data in a separate view. Today HyperJournal filters out HL's spot fills (`coin: @N`, `dir: Buy|Sell`) from the perp reconstruction pipeline because the accounting model is fundamentally different. A user who also does spot will see nothing for those coins. A future session could add a `domain/spot/` module if demand emerges.
+- `[soon]` Add `isForceClose: boolean` (or a more specific `closeReason: 'user' | 'auto-deleveraging' | 'liquidation'` tag) on `TradeLeg` so the UI can visually distinguish forced closes. Currently an ADL'd trade looks identical to a user-closed one on the metrics grid.
+- `[maybe]` The `checkRealizedPnl` oracle's close-role detection (`fill.dir === 'Close Long' || 'Close Short' || 'Auto-Deleveraging' || 'Liquidation'`) is duplicated in both `reconstructCoinTrades.dirToRole` and the oracle. Extract an `isCloseRoleDir(dir)` helper if more dir values surface.
