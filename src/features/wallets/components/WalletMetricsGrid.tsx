@@ -9,18 +9,27 @@ import {
 
 type Props = { stats: TradeStats };
 
-export function WalletMetricsGrid({ stats }: Props) {
-  const pnlTone =
-    stats.totalPnl > 0 ? 'gain' : stats.totalPnl < 0 ? 'loss' : 'neutral';
-  const expectancyTone =
-    stats.expectancy !== null && stats.expectancy >= 0 ? 'gain' : 'loss';
+type Tone = 'neutral' | 'gain' | 'loss' | 'risk';
 
+/**
+ * Resolve a tone from a signed number that may be null. Null → neutral
+ * (no data should not be coloured green or red); positive → gain; negative
+ * → loss; exactly zero → neutral.
+ */
+function signedTone(value: number | null): Tone {
+  if (value === null) return 'neutral';
+  if (value > 0) return 'gain';
+  if (value < 0) return 'loss';
+  return 'neutral';
+}
+
+export function WalletMetricsGrid({ stats }: Props) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <MetricCard
         label="Total PnL"
         value={formatCurrency(stats.totalPnl)}
-        tone={pnlTone}
+        tone={signedTone(stats.totalPnl)}
         provenance={stats.provenance}
       />
       <MetricCard
@@ -42,7 +51,7 @@ export function WalletMetricsGrid({ stats }: Props) {
       <MetricCard
         label="Expectancy"
         value={formatCurrency(stats.expectancy)}
-        tone={expectancyTone}
+        tone={signedTone(stats.expectancy)}
         provenance={stats.provenance}
         subtext="per trade"
       />
@@ -70,19 +79,19 @@ export function WalletMetricsGrid({ stats }: Props) {
       <MetricCard
         label="Best trade"
         value={formatCurrency(stats.bestTrade)}
-        tone="gain"
+        tone={signedTone(stats.bestTrade)}
         provenance={stats.provenance}
       />
       <MetricCard
         label="Worst trade"
         value={formatCurrency(stats.worstTrade)}
-        tone="loss"
+        tone={signedTone(stats.worstTrade)}
         provenance={stats.provenance}
       />
       <MetricCard
         label="Total fees"
-        value={formatCurrency(-stats.totalFees)}
-        tone="loss"
+        value={formatCurrency(stats.totalFees > 0 ? -stats.totalFees : 0)}
+        tone={stats.totalFees > 0 ? 'loss' : 'neutral'}
         provenance={stats.provenance}
         subtext="across all trades"
       />

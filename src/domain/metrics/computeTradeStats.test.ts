@@ -188,6 +188,57 @@ describe('computeTradeStats', () => {
     expect(computeTradeStats(trades).totalFees).toBeCloseTo(4, 9);
   });
 
+  it('returns null nullable-fields when every trade is still open (no closed trades)', () => {
+    // Common first-load state for a wallet with only unrealized positions.
+    const trades = [
+      makeTrade({ id: 'a', status: 'open', realizedPnl: 0, totalFees: 1 }),
+      makeTrade({ id: 'b', status: 'open', realizedPnl: 0, totalFees: 2 }),
+    ];
+    const s = computeTradeStats(trades);
+    expect(s.openCount).toBe(2);
+    expect(s.closedCount).toBe(0);
+    expect(s.totalPnl).toBe(0);
+    expect(s.winRate).toBeNull();
+    expect(s.expectancy).toBeNull();
+    expect(s.profitFactor).toBeNull();
+    expect(s.avgWin).toBeNull();
+    expect(s.avgLoss).toBeNull();
+    expect(s.maxDrawdown).toBe(0);
+    expect(s.maxDrawdownPct).toBeNull();
+    expect(s.avgHoldTimeMs).toBeNull();
+    expect(s.bestTrade).toBeNull();
+    expect(s.worstTrade).toBeNull();
+    expect(s.totalFees).toBeCloseTo(3, 9);
+  });
+
+  it('handles a single-trade array without off-by-one errors', () => {
+    const trades = [
+      makeTrade({
+        id: 'a',
+        status: 'closed',
+        side: 'long',
+        realizedPnl: 42,
+        holdTimeMs: 5000,
+        totalFees: 0.5,
+      }),
+    ];
+    const s = computeTradeStats(trades);
+    expect(s.closedCount).toBe(1);
+    expect(s.totalPnl).toBe(42);
+    expect(s.winRate).toBeCloseTo(1, 9);
+    expect(s.expectancy).toBeCloseTo(42, 9);
+    expect(s.profitFactor).toBeNull(); // no losers
+    expect(s.avgWin).toBeCloseTo(42, 9);
+    expect(s.avgLoss).toBeNull();
+    expect(s.maxDrawdown).toBe(0); // monotone increasing
+    expect(s.bestTrade).toBe(42);
+    expect(s.worstTrade).toBe(42);
+    expect(s.longCount).toBe(1);
+    expect(s.longWinRate).toBeCloseTo(1, 9);
+    expect(s.avgHoldTimeMs).toBeCloseTo(5000, 9);
+    expect(s.totalFees).toBeCloseTo(0.5, 9);
+  });
+
   it('on the real fixture, totalPnl matches the sum of reconstructed realizedPnl', () => {
     const s = computeTradeStats(realTrades);
     const reconSum = realTrades
