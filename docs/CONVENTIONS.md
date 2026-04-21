@@ -38,7 +38,11 @@ _To be populated as patterns emerge._ Initial expectations:
 - Every public function has at least one Vitest test covering the happy path and one edge case.
 - `domain/` may only import from `@entities/*` (and other `@domain/*`). The boundary is lint-enforced (`boundaries/element-types`).
 - Coverage threshold for `src/domain/**/*.ts` is 90% lines / branches / functions / statements, configured in `vitest.config.ts`. Adding a domain function without a test will fail `pnpm test:coverage` and therefore fail CI.
-- Worked example: `src/domain/wallets/isValidWalletAddress.ts` — pure predicate, narrows `string` to the branded `WalletAddress` type, 100% covered.
+- Worked example (simple): `src/domain/wallets/isValidWalletAddress.ts` — pure predicate, narrows `string` to the branded `WalletAddress` type, 100% covered.
+- Worked example (multi-file algorithm): `src/domain/reconstruction/` — one file per concern (group, per-coin reconstruct, top-level orchestrator, PnL oracle), each with its own co-located test. Running-state walks use local `let` variables in a pure function; mutation is scoped to the function, the function's inputs and outputs remain immutable. Future multi-file domains should follow this shape.
+- When a domain module throws on unexpected input (unknown enum, dangling state, impossible invariant), the error message must name the function, the relevant keys (coin, wallet, etc.), and the offending identifier (tid, hash, etc.) so a production stack trace is debuggable without the full input.
+- **Oracle-gated correctness:** algorithms whose output must match an external source (like HL's own realizedPnl) ship with a cross-check function that compares both sides. `checkRealizedPnl` is the canonical example — it is the real correctness gate for reconstruction, not just a test. Future algorithms with external ground truth (e.g., Sharpe ratio against TradingView if we ever add that) should ship their oracle alongside.
+- **Handle truncation gracefully.** Production data from Hyperliquid is capped at 2000 fills per request — trades can span that boundary and appear mid-lifecycle in our window. Prime state from HL's `startPosition` field on the first fill (signed: positive=long, negative=short) rather than assuming zero. Emitted trades whose opens were truncated have `avgEntryPx: null` and `openedSize: 0`; this is honest, not lossy.
 
 ---
 

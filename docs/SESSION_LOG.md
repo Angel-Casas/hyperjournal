@@ -161,3 +161,45 @@ Every session **must** add an entry before closing. The goal is that a future se
 - The `cache-through` pattern (Dexie first, fetch if stale, write-back, fall back to stale on error) is the canonical shape for API-backed queries. Future hooks should mirror it, not invent new flows.
 
 ---
+
+## 2026-04-21 — Phase 1 Session 3: Trade reconstruction engine
+
+**Session goal:** Turn `RawFill[]` into `ReconstructedTrade[]` via pure functions in `domain/reconstruction/`, verified by an oracle that round-trips HL's own `closedPnl` accounting through the reconstruction and checks per-coin totals within $0.01.
+
+**Done:**
+
+- `src/entities/trade.ts`: `TradeLeg`, `TradeStatus`, `TradeSide`, `ReconstructedTrade` types. Derived fields carry `provenance: 'observed'` since they flow deterministically from observed fills. `avgEntryPx: number | null` — null when all opens were pre-window truncated.
+- `src/domain/reconstruction/groupFillsByCoin.ts` + 6 tests: pure helper that partitions fills into per-coin arrays sorted by (time asc, tid asc). First-seen Map iteration order for determinism.
+- `src/domain/reconstruction/reconstructCoinTrades.ts` + 12 tests: the core algorithm. Walks time-sorted fills for one coin, maintaining openSize / side / hasSeenOpen. Primes state from the first fill's signed `startPosition` to handle HL's 2000-fill truncation cap gracefully — trades that enter mid-position are reconstructed correctly, trades whose opens were entirely truncated emit with `openedSize: 0` and `avgEntryPx: null`. Throws on unknown `dir`, mid-stream dangling closes, and oversized closes (documented as v1 limitations in BACKLOG).
+- `src/domain/reconstruction/reconstructTrades.ts` + 6 tests: top-level orchestrator composing groupFillsByCoin + reconstructCoinTrades. Tests verify leg↔fill one-to-one preservation against the real fixture.
+- `src/domain/reconstruction/checkRealizedPnl.ts` + 4 tests: the correctness oracle. Sums HL's closedPnl per coin (filtered to fills that became legs), sums reconstructed realizedPnl per coin, asserts every delta within $0.01. **On the real fixture, every delta is exactly 0.00000000.** Per-coin realized PnL from the sample: NVDA +$1010.97, ORCL +$1279.08, BTC −$7.13, MSFT +$84.43, TAO +$5.57, BRENTOIL +$5.95, SNX −$1657.42.
+- `chore(lint): exempt test files from boundaries/element-types rule` (`d64c1d1`) — test files need to reach across layer boundaries to exercise the pipeline end-to-end (e.g., a domain test importing a lib/validation schema); production code's enforcement is unchanged.
+- End state: 81 tests across 12 files (was 51 after Session 2b). Gauntlet clean. Domain coverage still 100%.
+
+**Decisions made:** none (no new ADRs; the test-files boundary relaxation is documented in the commit and CONVENTIONS.md rather than in DECISIONS.md).
+
+**Deferred / not done:**
+
+- Liquidation support — BACKLOG. Needs a wider fixture that includes `dir: "Liquidation"` to design properly.
+- Single-fill flips — BACKLOG. HL seems to split flips but the algorithm throws on them for safety.
+- Dropped-leading-truncation-fill surfacing — BACKLOG. Numbers are self-consistent via the oracle filter, but a UI view of those closes' PnL is missing.
+- Funding attribution to trades — BACKLOG. Session 4 or 5 decision.
+- Scale-in/scale-out pattern flags — BACKLOG for later pattern detection.
+- Wallet stamping on trades — BACKLOG. Pure reconstruction doesn't know the wallet; Session 4's hook layer will pass it in.
+
+**Gotchas for next session (Session 4):**
+
+- `reconstructTrades(fills)` consumes Session 2b's `useUserFills` hook output directly — no adapter needed. Session 4 builds a `useReconstructedTrades` hook that composes: `useUserFills` → `reconstructTrades` via `useMemo`.
+- Trades can have `avgEntryPx: null` (pre-window opens) or `avgExitPx: null` (still open). Session 4's analytics must handle these — render em-dash or "—" in tables, skip in aggregate price averages.
+- The PnL oracle is available as a public export from `@domain/reconstruction/checkRealizedPnl`. Session 4's UI can surface the per-coin breakdown as a debug panel or as the headline "total realized PnL" number.
+- Trades with `openedSize: 0` (pure-close truncated) still contribute to realized PnL correctly. Don't filter them out in aggregate PnL calculations.
+- The `ZERO_TOLERANCE` constant for position-equals-zero checks is 1e-9. Session 4 should NOT adjust this; any trade-sum tolerance should use the higher-level `$0.01` USDC threshold from the PnL oracle.
+
+**Invariants assumed:**
+
+- Reconstruction is pure and deterministic: same input fills → identical `ReconstructedTrade[]` (including the same `id` strings). This is load-bearing for Session 4's React-memo usage.
+- Every close-role fill that becomes a leg contributes its full `closedPnl` to the trade's `realizedPnl`. The PnL oracle depends on this invariant.
+- `hasSeenOpen` semantics: once true within a coin's walk, it stays true for the rest of the walk. A close with `side: null` and `hasSeenOpen: true` is an algorithmic bug, not legitimate data.
+- Priming semantics: `startPosition` on the first fill is the signed pre-window position. Sign encodes direction, absolute value encodes size. HL is trusted on this.
+
+---

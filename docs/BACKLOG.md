@@ -61,3 +61,15 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[maybe]` Wallet labels (currently always `null`) would be a small quality-of-life feature. Add a rename affordance to each saved wallet row. Low priority.
 - `[soon]` Export / import of Dexie data — critical for the "local-first backup" story. Session 5.
 - `[maybe]` EIP-55 checksum validation would catch typos that happen to be valid hex. Add an `isChecksumValid` domain function if/when user feedback suggests typos are a problem.
+
+---
+
+## Session 3 deferrals
+
+- `[soon]` Support `dir: "Liquidation"` (and any other non-{Open,Close}×{Long,Short} values HL may emit). Today the reconstruction throws on unknown dir. The real fixture did not exercise this but production wallets that got liquidated will. Likely treatment: liquidations are closes with an `isLiquidation` flag on the leg.
+- `[soon]` Support single-fill flips (oversized close that crosses zero). HL appears to split flips across two fills in practice, but the algorithm throws on this for safety. Confirm with wider fixtures before relaxing.
+- `[soon]` Mid-stream dangling closes currently throw. They may actually occur if two separate open→close cycles happen so close together that our state reset races — investigate if seen in production.
+- `[maybe]` Surface the "dropped leading-truncation fill" case visibly to the user. Today those fills are silently dropped; the PnL oracle filter makes the numbers self-consistent, but a user viewing the trade list would never see those closes' PnL. For accuracy, aggregate "truncated history prior to window" as a phantom trade per coin with `status: 'closed'`, `openedSize: null`, and the sum of dropped closes' PnL.
+- `[maybe]` Attribute funding payments to individual trades. Currently `realizedPnl` excludes funding (it's on `userFunding`, not `userFills`). Session 4's per-trade display may want funding folded in; decide when that UX lands.
+- `[maybe]` Scale-in/scale-out pattern labels on `ReconstructedTrade` (`wasScaledIn: boolean`, `wasScaledOut: boolean`). Useful for pattern detection in later phases.
+- `[soon]` `wallet` field on `ReconstructedTrade` is always `null` — the pure domain layer doesn't know the wallet. Session 4's query hook should pass the wallet in as a parameter to `reconstructTrades` and stamp it on every emitted trade.
