@@ -1,21 +1,11 @@
 import { useMemo } from 'react';
 import { EChartsBase } from '@lib/charts/EChartsBase';
+import { CHART_TOKENS as T } from '@lib/charts/tokens';
 import { buildPnlCalendar } from '@domain/metrics/buildPnlCalendar';
 import type { ReconstructedTrade } from '@entities/trade';
 import type { EChartsOption } from 'echarts';
 
 type Props = { trades: ReadonlyArray<ReconstructedTrade> };
-
-const TOKEN = {
-  bgBase: 'hsl(220 13% 6%)',
-  bgOverlay: 'hsl(220 12% 9%)',
-  borderStrong: 'hsl(220 10% 26%)',
-  border: 'hsl(220 10% 18%)',
-  fgBase: 'hsl(210 20% 96%)',
-  fgMuted: 'hsl(215 16% 72%)',
-  gain: 'hsl(152 76% 50%)',
-  loss: 'hsl(357 80% 60%)',
-};
 
 export function PnlCalendarChart({ trades }: Props) {
   const calendar = useMemo(() => buildPnlCalendar(trades), [trades]);
@@ -33,9 +23,9 @@ export function PnlCalendarChart({ trades }: Props) {
       animation: false,
       backgroundColor: 'transparent',
       tooltip: {
-        backgroundColor: TOKEN.bgOverlay,
-        borderColor: TOKEN.borderStrong,
-        textStyle: { color: TOKEN.fgBase },
+        backgroundColor: T.bgRaised,
+        borderColor: T.borderStrong,
+        textStyle: { color: T.fgBase },
         formatter: (p: unknown) => {
           const param = p as { data: [string, number, number] };
           const [date, pnl, count] = param.data;
@@ -53,16 +43,16 @@ export function PnlCalendarChart({ trades }: Props) {
         bottom: 0,
         show: false,
         inRange: {
-          color: [TOKEN.loss, TOKEN.border, TOKEN.gain],
+          color: [T.loss, T.border, T.gain],
         },
       },
       calendar: {
         range: [firstDate, lastDate],
         cellSize: ['auto', 16],
-        itemStyle: { borderColor: TOKEN.bgBase, borderWidth: 1 },
+        itemStyle: { borderColor: T.bgBase, borderWidth: 1 },
         splitLine: { show: false },
-        dayLabel: { color: TOKEN.fgMuted },
-        monthLabel: { color: TOKEN.fgMuted },
+        dayLabel: { color: T.fgMuted },
+        monthLabel: { color: T.fgMuted },
         yearLabel: { show: false },
       },
       series: [

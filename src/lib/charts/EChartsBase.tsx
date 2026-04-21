@@ -53,8 +53,10 @@ export function EChartsBase({ option, className, style, onEvents }: Props) {
       instance.on(name, handler);
     }
     return () => {
-      for (const name of Object.keys(onEvents)) {
-        instance.off(name);
+      // Symmetric with .on(name, handler) — pass the handler so we remove
+      // only our listener, not any future listener on the same event.
+      for (const [name, handler] of Object.entries(onEvents)) {
+        instance.off(name, handler);
       }
     };
   }, [onEvents]);
@@ -63,6 +65,10 @@ export function EChartsBase({ option, className, style, onEvents }: Props) {
     <div
       ref={hostRef}
       data-testid="echarts-base"
+      // Canvas-rendered chart content is opaque to screen readers. Mark
+      // as decorative; the surrounding <section aria-labelledby> and
+      // the parent MetricCard grid carry the semantic information.
+      aria-hidden
       className={className}
       style={style}
     />

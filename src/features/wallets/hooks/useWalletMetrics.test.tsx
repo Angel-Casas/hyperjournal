@@ -36,19 +36,27 @@ afterEach(async () => {
 });
 
 describe('useWalletMetrics', () => {
-  it('returns null stats while fills are loading', () => {
+  it('returns null stats and an empty trades list while fills are loading', () => {
     vi.mocked(global.fetch).mockResolvedValue(new Response(fillsFixture, { status: 200 }));
     const { result } = renderHook(() => useWalletMetrics(addr, { db }), { wrapper });
     expect(result.current.stats).toBeNull();
+    expect(result.current.trades).toEqual([]);
     expect(result.current.isLoading).toBe(true);
   });
 
-  it('returns computed stats after fills load', async () => {
+  it('returns computed stats AND a populated trades array after fills load', async () => {
     vi.mocked(global.fetch).mockResolvedValue(new Response(fillsFixture, { status: 200 }));
     const { result } = renderHook(() => useWalletMetrics(addr, { db }), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.stats).not.toBeNull();
     expect(result.current.stats!.closedCount).toBeGreaterThan(0);
+    expect(result.current.trades.length).toBeGreaterThan(0);
+    // trades and stats should be derived from the same pipeline pass:
+    // count of closed trades in trades matches stats.closedCount.
+    const closedFromTrades = result.current.trades.filter(
+      (t) => t.status === 'closed',
+    ).length;
+    expect(closedFromTrades).toBe(result.current.stats!.closedCount);
   });
 
   it('propagates error from the underlying fetch', async () => {

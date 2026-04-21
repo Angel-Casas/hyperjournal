@@ -40,10 +40,11 @@ describe('EChartsBase', () => {
     expect(mocks.init.mock.calls[0]![0]).toBeInstanceOf(HTMLDivElement);
   });
 
-  it('calls setOption with the option prop after mount', () => {
+  it('calls setOption with notMerge:true so series data replaces instead of merging', () => {
     render(<EChartsBase option={{ title: { text: 'a' } }} />);
     expect(mocks.setOption).toHaveBeenCalled();
     expect(mocks.setOption.mock.calls[0]![0]).toEqual({ title: { text: 'a' } });
+    expect(mocks.setOption.mock.calls[0]![1]).toEqual({ notMerge: true });
   });
 
   it('applies className and style to the root div', () => {
