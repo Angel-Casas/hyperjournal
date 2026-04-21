@@ -45,4 +45,3 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[maybe]` Consider a `useReducedMotion()` hook wrapper for Framer Motion so every animation honors `prefers-reduced-motion` at the component level in addition to the global CSS override. Decide after the first real animation lands.
 - `[maybe]` When ESLint 9 becomes unavoidable, migrate `.eslintrc.cjs` to flat config (`eslint.config.js`). Track `eslint-plugin-boundaries` flat-config support before doing this. Referenced in ADR-0005.
 - `[maybe]` Write an ADR recording the pnpm major version bump (9 → 10) if anything surprising ever surfaces. For now the SESSION_LOG and `packageManager` field are the only records.
-- `[soon]` Session 2 should create `tests/fixtures/` (with a `.gitkeep`) as its first commit — CONVENTIONS.md §8 forward-references it.

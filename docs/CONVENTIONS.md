@@ -69,9 +69,10 @@ _To be populated as patterns emerge._
 
 ## 7. Error handling and provenance
 
-_To be populated as patterns emerge._ Initial expectations:
-
 - External boundaries (API, storage, file import) validate with Zod and surface parse errors distinctly from network errors.
+- API clients in `lib/api/**` **throw** typed error classes (e.g., `HyperliquidApiError` with `status` and `body`) on transport failures and let `ZodError` bubble on schema mismatches. Thrown errors flow naturally into TanStack Query's `error` state. Pure-domain and domain-adjacent code returns `Result<T, E>` unions per §3 instead of throwing.
+- **Dependency direction for shared shapes:** types that cross into `domain/` (e.g., `RawFill`) live in `src/entities/` as plain TypeScript declarations. The Zod schema in `lib/validation/**` carries a compile-time `_schemaCheck` constant that asserts `z.infer<typeof Schema>` is mutually assignable with the entity. This keeps entities as the stable contract while keeping `lib/validation` as the verifier. Types consumed only by `features/**` (e.g., `ClearinghouseState`) may stay inferred from the Zod schema — YAGNI; promote to entity only when a lower layer needs them.
+- **Zod + transforms:** functions that take schemas with input transforms (e.g., `NumericString: string → number`) type the schema parameter as `z.ZodType<Output, z.ZodTypeDef, unknown>` — the default `z.ZodType<T>` ties input to output and breaks on transforms. Output stays fully typed.
 - Provenance is attached at the point a value is first produced and preserved through transforms.
 - UI renders `unknown` values with a neutral placeholder and a tooltip explaining why the value is missing.
 
@@ -85,7 +86,8 @@ _To be populated as patterns emerge._ Initial expectations:
 - Tests are co-located: `Foo.tsx` + `Foo.test.tsx` in the same directory (including for `src/app/` and `src/domain/**/`).
 - TDD for `domain/`: write the failing test first, confirm RED locally, then the minimal impl. `src/domain/wallets/isValidWalletAddress.*` is the canonical reference. The RED phase must be observed (run the test and see the failure for the expected reason) but does not need to be preserved as a separate commit — bundling the failing test + passing impl into one clean commit is acceptable, provided the RED observation happened in execution.
 - Playwright for E2E smoke tests — deferred to Session 4+ when a real user flow exists.
-- Use realistic fixtures for domain tests. A small, checked-in set of anonymized Hyperliquid sample payloads will live in `tests/fixtures/` (introduced in Session 2).
+- Anonymized response fixtures live in `tests/fixtures/<source>/`. Unit tests in `lib/validation/` and `lib/api/` read them via `readFileSync` + `JSON.parse`; no unit test ever hits a live API. Refreshing fixtures is a manual one-off operation documented in each fixture directory's `README.md`.
+- API client tests mock `global.fetch` with `vi.stubGlobal('fetch', vi.fn())` in `beforeEach` and `vi.unstubAllGlobals()` + `vi.restoreAllMocks()` in `afterEach`. Response bodies are streamed from the committed fixtures so the real validation pipeline runs end-to-end.
 
 ---
 
