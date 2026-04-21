@@ -166,4 +166,3 @@ Use **react-router-dom v6** with `BrowserRouter` and a `basename` tied to `impor
 - Invariant: never store `selectedWalletAddress` in Zustand — read it from route params. Zustand holds only non-addressable UI state.
 
 ---
-

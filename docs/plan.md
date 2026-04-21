@@ -643,15 +643,18 @@ Journaling should feel lightweight enough to use regularly, not like filling tax
 ### Supported AI use cases
 
 1. **Chat-style insight**
+
    - “Why are my losses larger than my winners?”
    - “Which setup seems strongest?”
 
 2. **Automatic trade review summaries**
+
    - summarize clusters of trades
    - summarize a bad week
    - summarize a strategy’s weaknesses
 
 3. **Journal note classification**
+
    - fear / greed / revenge / overconfidence / hesitation / discipline lapses
    - recurring themes across notes
 

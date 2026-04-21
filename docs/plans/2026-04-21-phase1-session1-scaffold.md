@@ -87,6 +87,7 @@ HyperJournal/
 ## Task 1: Verify prerequisites and initialize repo
 
 **Files:**
+
 - Create: `.gitignore`
 
 - [ ] **Step 1.1: Check Node and pnpm versions**
@@ -138,6 +139,7 @@ git commit -m "chore: add gitignore for Node/Vite project"
 ## Task 2: Scaffold Vite + React + TS and customize package.json
 
 **Files:**
+
 - Create: `package.json`, `tsconfig.json`, `tsconfig.node.json`, `vite.config.ts`, `index.html`, `src/main.tsx`, `src/vite-env.d.ts`
 
 - [ ] **Step 2.1: Run Vite scaffold into a temp directory and move useful files out**
@@ -388,6 +390,7 @@ git commit -m "chore: scaffold Vite + React + TS strict project with pinned deps
 ## Task 3: Tailwind with dark-first semantic tokens
 
 **Files:**
+
 - Create: `postcss.config.js`, `tailwind.config.ts`, `src/styles/globals.css`, `src/lib/ui/tokens.ts`
 
 - [ ] **Step 3.1: Write `postcss.config.js`**
@@ -532,6 +535,7 @@ git commit -m "feat(ui): configure Tailwind with dark-first semantic design toke
 ## Task 4: App shell — providers, router, split home route
 
 **Files:**
+
 - Create: `src/app/App.tsx`, `src/app/providers.tsx`, `src/app/routes.tsx`, `src/state/ui-store.ts`, `src/features/home/index.ts`, `src/features/home/components/SplitHome.tsx`, `src/features/analytics/index.ts`, `src/features/analytics/components/AnalyticsPanel.tsx`, `src/features/journal/index.ts`, `src/features/journal/components/JournalPanel.tsx`, `src/features/wallets/index.ts`
 
 - [ ] **Step 4.1: Write `src/state/ui-store.ts`**
@@ -705,12 +709,9 @@ Create `/Users/angel/Documents/HyperJournal/src/app/routes.tsx`:
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { SplitHome } from '@features/home';
 
-const router = createBrowserRouter(
-  [
-    { path: '/', element: <SplitHome /> },
-  ],
-  { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' },
-);
+const router = createBrowserRouter([{ path: '/', element: <SplitHome /> }], {
+  basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/',
+});
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
@@ -756,6 +757,7 @@ git commit -m "feat(app): add provider shell, router, and split-home route with 
 ## Task 5: ESLint (flat config) + Prettier + import boundaries
 
 **Files:**
+
 - Create: `eslint.config.js`, `.prettierrc`, `.prettierignore`
 
 - [ ] **Step 5.1: Write `.prettierrc`**
@@ -906,6 +908,7 @@ git commit -m "chore: add ESLint flat config with import boundaries and Prettier
 ## Task 6: Vitest + React Testing Library setup and one smoke test
 
 **Files:**
+
 - Create: `vitest.config.ts`, `src/tests/setup.ts`, `src/features/home/components/SplitHome.test.tsx`
 
 - [ ] **Step 6.1: Write `vitest.config.ts`**
@@ -974,12 +977,8 @@ import { SplitHome } from './SplitHome';
 describe('SplitHome', () => {
   it('renders the analytics and journal panels side by side', () => {
     render(<SplitHome />);
-    expect(
-      screen.getByRole('heading', { name: /trading analytics/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /journal & coaching/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /trading analytics/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /journal & coaching/i })).toBeInTheDocument();
   });
 });
 ```
@@ -1003,6 +1002,7 @@ git commit -m "test: set up Vitest + RTL and add SplitHome smoke test"
 This task proves the TDD loop the rest of Phase 1 depends on: red → green → refactor → commit. It also produces a real utility Session 2 will use to validate pasted addresses.
 
 **Files:**
+
 - Create: `src/entities/wallet.ts`, `src/domain/wallets/isValidWalletAddress.ts`, `src/domain/wallets/isValidWalletAddress.test.ts`
 
 - [ ] **Step 7.1: Write the entity type**
@@ -1098,6 +1098,7 @@ git commit -m "feat(domain): add WalletAddress type and isValidWalletAddress wit
 ## Task 8: PWA assets and GitHub Pages SPA fallback
 
 **Files:**
+
 - Create: `public/favicon.svg`, `public/404.html`, `public/icons/icon-192.png` (placeholder), `public/icons/icon-512.png` (placeholder)
 
 - [ ] **Step 8.1: Write `public/favicon.svg`**
@@ -1159,21 +1160,21 @@ Create `/Users/angel/Documents/HyperJournal/public/404.html`:
 Modify `/Users/angel/Documents/HyperJournal/index.html` — insert this script block immediately before `<script type="module" src="/src/main.tsx"></script>`:
 
 ```html
-    <script>
-      // Decoder for the spa-github-pages 404.html redirect.
-      (function (l) {
-        if (l.search[1] === '/') {
-          var decoded = l.search
-            .slice(1)
-            .split('&')
-            .map(function (s) {
-              return s.replace(/~and~/g, '&');
-            })
-            .join('?');
-          window.history.replaceState(null, '', l.pathname.slice(0, -1) + decoded + l.hash);
-        }
-      })(window.location);
-    </script>
+<script>
+  // Decoder for the spa-github-pages 404.html redirect.
+  (function (l) {
+    if (l.search[1] === '/') {
+      var decoded = l.search
+        .slice(1)
+        .split('&')
+        .map(function (s) {
+          return s.replace(/~and~/g, '&');
+        })
+        .join('?');
+      window.history.replaceState(null, '', l.pathname.slice(0, -1) + decoded + l.hash);
+    }
+  })(window.location);
+</script>
 ```
 
 - [ ] **Step 8.4: Create placeholder PWA icons**
@@ -1204,6 +1205,7 @@ git commit -m "feat(pwa): add PWA assets and GH Pages SPA fallback scaffolding"
 ## Task 9: GitHub Actions deploy workflow
 
 **Files:**
+
 - Create: `.github/workflows/deploy.yml`
 
 - [ ] **Step 9.1: Write the workflow**
@@ -1293,6 +1295,7 @@ After pushing to GitHub, the user must enable Pages for this repo: Repository �
 ## Task 10: Update CONVENTIONS, BACKLOG, SESSION_LOG
 
 **Files:**
+
 - Modify: `docs/CONVENTIONS.md`, `docs/BACKLOG.md`, `docs/SESSION_LOG.md`
 
 - [ ] **Step 10.1: Add patterns that emerged to `docs/CONVENTIONS.md`**
@@ -1328,6 +1331,7 @@ Append this entry immediately below the `---` line at the end of the file:
 **Session goal:** Lay the Vite + React + TS-strict foundation with Tailwind tokens, split-home route, PWA scaffold, import-boundary-enforcing lint, a working Vitest TDD loop, and a CI deploy to GitHub Pages.
 
 **Done:**
+
 - Scaffolded Vite + React + TS strict with pnpm (Node ≥ 20.11, pnpm 9.12.0).
 - Installed pinned dependencies covering core runtime (React, Router, TanStack Query, Zustand, Framer Motion), styling (Tailwind), PWA (vite-plugin-pwa), and test/lint toolchain.
 - Configured Tailwind with dark-first semantic tokens (`gain`, `loss`, `risk`, `neutral`, `accent`) and a `prefers-reduced-motion` base override.
@@ -1341,17 +1345,20 @@ Append this entry immediately below the `---` line at the end of the file:
 **Decisions made:** ADR-0002 (GH Pages deploy), ADR-0003 (pnpm), ADR-0004 (React Router v6 BrowserRouter).
 
 **Deferred / not done:**
+
 - Playwright E2E — deferred to Session 4+; no real flow to exercise yet.
 - shadcn/ui init — deferred to Session 2 (first user of Button/Input).
 - Real PWA icons — deferred to Session 5 polish; SVG placeholders in place.
 
 **Gotchas for next session:**
+
 - Production builds must be run with `VITE_BASE_PATH=/<repo-name>/` or Pages assets 404. CI sets this automatically.
 - `selectedWalletAddress` belongs in the route (per ADR-0004), not in Zustand. Session 2 wallet feature should place the address in the URL (`/w/:address`) and read it via `useParams`.
 - Alias definitions are duplicated across `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`. Keep them in lockstep; any new alias must be added to all three.
 - After first push, the user must manually enable GH Pages: Settings → Pages → Source: GitHub Actions.
 
 **Invariants assumed:**
+
 - Every test added to `src/domain/**` must keep coverage ≥ 90% (threshold is in `vitest.config.ts`).
 - `src/styles/globals.css` is the single source of CSS custom properties; components consume them only through Tailwind tokens.
 - The `boundaries` ESLint rule is the authoritative encoder of CLAUDE.md §4; if you need to relax it, write an ADR that amends §4 first.

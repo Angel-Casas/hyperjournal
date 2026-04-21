@@ -13,6 +13,7 @@
 Foundation only. No business logic beyond a single wallet-address validator used to prove the TDD loop works end-to-end.
 
 **Deliverables:**
+
 - Vite + React + TS strict scaffold with pnpm
 - Tailwind + dark-first design tokens (gain/loss/risk/neutral)
 - shadcn/ui initialized with Button + Card
@@ -31,6 +32,7 @@ Foundation only. No business logic beyond a single wallet-address validator used
 ### Session 2 — Hyperliquid ingestion + wallet lookup + Dexie persistence
 
 **Deliverables:**
+
 - `lib/api/hyperliquid.ts` — typed client hitting `POST api.hyperliquid.xyz/info`
 - `lib/validation/hyperliquid.ts` — Zod schemas for `userFills`, `clearinghouseState`, `userFillsByTime`
 - `entities/` — `Wallet`, `RawFill`, `Provenance` types
@@ -47,6 +49,7 @@ Foundation only. No business logic beyond a single wallet-address validator used
 ### Session 3 — Trade reconstruction engine
 
 **Deliverables:**
+
 - `domain/reconstruction/` — pure functions that group fills into `ReconstructedTrade`s
 - Position state machine: open → add → reduce → close → flip
 - `TradeLeg`, `ReconstructedTrade`, `PositionSegment` types (entities)
@@ -61,6 +64,7 @@ Foundation only. No business logic beyond a single wallet-address validator used
 ### Session 4 — Analytics metrics, equity graph, P/L calendar, trade history, expanded analytics view
 
 **Deliverables:**
+
 - `domain/metrics/` — Tier-1 metrics (overall PnL, realized PnL, win rate, expectancy, profit factor, average win/loss, drawdown, average hold time, trade count, long/short split)
 - ECharts wrapper components in `lib/charts/`
 - Equity / cumulative-PnL curve
@@ -76,6 +80,7 @@ Foundation only. No business logic beyond a single wallet-address validator used
 ### Session 5 — Journaling stub, export/import, PWA polish, a11y, responsive baseline
 
 **Deliverables:**
+
 - `features/journal/` — trade + session + strategy journal forms (text-only; screenshots defer to Phase 3 polish)
 - Dexie repositories for journals, tags, mood markers
 - Journal-expanded route + split-home journal panel preview
