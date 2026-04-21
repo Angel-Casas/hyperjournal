@@ -166,3 +166,33 @@ Use **react-router-dom v6** with `BrowserRouter` and a `basename` tied to `impor
 - Invariant: never store `selectedWalletAddress` in Zustand — read it from route params. Zustand holds only non-addressable UI state.
 
 ---
+
+## ADR-0005: ESLint uses legacy config with `eslint-import-resolver-typescript`
+
+- **Date:** 2026-04-21
+- **Status:** Accepted
+- **Author:** Claude (phase-1 session 1 execution)
+
+### Context
+
+Task 5 of Phase 1 Session 1 was to enforce the CLAUDE.md §4 import boundaries via `eslint-plugin-boundaries`. Two problems surfaced during execution: (1) flat config support in boundaries 4.2.2 on ESLint 8.x is fragile; (2) with the default Node resolver, the rule only fires on _relative_ imports — aliased imports like `@features/analytics` are silently allowed because Node cannot resolve the alias to a file path, so the plugin cannot classify the target as a `feature`. Since the entire codebase deliberately uses aliases, the rule would have been near-useless as originally shipped.
+
+### Decision
+
+1. Use **ESLint legacy config** (`.eslintrc.cjs`) instead of flat config. All boundaries-plugin features are supported there and the config is stable.
+2. Add **`eslint-import-resolver-typescript@3.6.3`** as a devDependency and register it under `settings['import/resolver'].typescript` with `alwaysTryTypes: true` and `project: './tsconfig.json'`. Boundaries then resolves `@features/*`-style aliases through the tsconfig `paths` map and classifies them correctly.
+
+### Alternatives considered
+
+- **Flat config (`eslint.config.js`) as originally planned** — rejected: boundaries 4.2.2 on ESLint 8.x produces hard-to-diagnose misfires under flat config; the plugin's documented examples still use legacy config.
+- **Drop the alias-resolving resolver and require relative imports project-wide** — rejected: aliases exist to decouple files from their depth in the tree; forbidding them to make a lint rule work trades correctness for a worse codebase.
+- **Accept the gap and rely on code review to catch aliased boundary violations** — rejected: silent lint rules are worse than no lint rules. CLAUDE.md §3 rule 7 is a non-negotiable rule, not a guideline.
+
+### Consequences
+
+- Easier: boundaries rule now enforces uniformly on both relative and aliased imports (verified by a probe that imports `@features/analytics` from `src/domain/` and gets `boundaries/element-types` at error level).
+- Easier: legacy config keeps all tooling on a well-trodden path with established examples.
+- Harder: when ESLint 9 becomes unavoidable, this config needs to be migrated to flat config. Keep the boundaries-plugin version aligned with flat-config support when that happens.
+- Invariant: any new TS path alias added to `tsconfig.json` must also be visible to the resolver (it is, automatically, because the resolver reads `tsconfig.json`). Never define aliases outside `tsconfig.json`.
+
+---
