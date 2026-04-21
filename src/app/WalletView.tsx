@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { isValidWalletAddress } from '@domain/wallets/isValidWalletAddress';
-import { useUserFills } from '@features/wallets/hooks/useUserFills';
+import { useUserFills, useSavedWallets } from '@features/wallets';
 import type { WalletAddress } from '@entities/wallet';
 
 export function WalletView() {
@@ -15,6 +16,19 @@ export function WalletView() {
 
 function WalletViewInner({ address }: { address: WalletAddress }) {
   const fills = useUserFills(address);
+  const { save } = useSavedWallets();
+
+  // Upsert the wallet on arrival so direct-URL visits populate the saved list
+  // too. The upsert is idempotent (same address → same row), and including
+  // `save` in deps would re-run on every render because mutation identity is
+  // not referentially stable — keep deps to [address] only.
+  useEffect(() => {
+    save.mutate({ address, label: null, addedAt: Date.now() });
+    // Intentionally only on address change — `save.mutate` is idempotent
+    // (upsert on same row), and TanStack Query's mutation object identity
+    // changes on every render; including it in deps would infinite-loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
 
   return (
     <main className="flex h-[100dvh] flex-col gap-4 bg-bg-base p-4">
