@@ -33,3 +33,14 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[later]` AI coaching integration via NanoGPT (Phase 4).
 - `[later]` Advanced quant overlays / correlation analysis (post-Phase 5).
 - `[later]` Creator-ready polish pass (Phase 5).
+
+---
+
+## Session 1 deferrals
+
+- `[soon]` Replace placeholder PWA icons at `public/icons/icon-192.svg` and `public/icons/icon-512.svg` with proper 192/512 PNGs (and maskable variants). The `vite-plugin-pwa` manifest `icons` array is currently empty; wire up once real assets exist. Landed in Session 5 polish.
+- `[soon]` Configure Playwright + one E2E smoke test. Deferred from Session 1 because no real user flow exists yet; revisit in Session 4 once analytics-expanded has a click-through path.
+- `[soon]` shadcn/ui init and Button/Card registration. Deferred to Session 2 — installing shadcn primitives is low value until the wallet input actually needs them.
+- `[later]` Enable GitHub Pages manually in repo settings after first push: Settings → Pages → Source: GitHub Actions. Cannot be automated.
+- `[maybe]` Consider a `useReducedMotion()` hook wrapper for Framer Motion so every animation honors `prefers-reduced-motion` at the component level in addition to the global CSS override. Decide after the first real animation lands.
+- `[maybe]` When ESLint 9 becomes unavoidable, migrate `.eslintrc.cjs` to flat config (`eslint.config.js`). Track `eslint-plugin-boundaries` flat-config support before doing this. Referenced in ADR-0005.
