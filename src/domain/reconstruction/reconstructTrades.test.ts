@@ -40,19 +40,39 @@ describe('reconstructTrades', () => {
     expect(legTids.sort()).toEqual(realFills.map((f) => f.tid).sort());
   });
 
-  it('closed trades have closedSize approximately equal to openedSize', () => {
+  // HL caps userFills at 2000 entries. Trades can enter the window
+  // mid-position, so openedSize (window opens) need not balance closedSize
+  // (window closes). The strict size-balance invariant only holds for
+  // cold-start trades; the Task 5 PnL oracle is the real correctness gate.
+  it('every trade has at least one leg and non-negative sizes', () => {
     const trades = reconstructTrades(realFills);
-    for (const t of trades.filter((t) => t.status === 'closed')) {
-      expect(Math.abs(t.closedSize - t.openedSize)).toBeLessThan(1e-6);
+    for (const t of trades) {
+      expect(t.legs.length).toBeGreaterThan(0);
+      expect(t.openedSize).toBeGreaterThanOrEqual(0);
+      expect(t.closedSize).toBeGreaterThanOrEqual(0);
     }
   });
 
-  it('open trades have closedSize === 0 and avgExitPx === null', () => {
+  it('trades with no opens in the window have avgEntryPx === null (truncation case)', () => {
     const trades = reconstructTrades(realFills);
-    for (const t of trades.filter((t) => t.status === 'open')) {
-      expect(t.closedSize).toBe(0);
-      expect(t.avgExitPx).toBeNull();
-      expect(t.realizedPnl).toBe(0);
+    for (const t of trades) {
+      if (t.openedSize === 0) {
+        expect(t.avgEntryPx).toBeNull();
+      } else {
+        expect(t.avgEntryPx).not.toBeNull();
+      }
+    }
+  });
+
+  it('trades with no closes have avgExitPx === null and realizedPnl === 0', () => {
+    const trades = reconstructTrades(realFills);
+    for (const t of trades) {
+      if (t.closedSize === 0) {
+        expect(t.avgExitPx).toBeNull();
+        expect(t.realizedPnl).toBe(0);
+      } else {
+        expect(t.avgExitPx).not.toBeNull();
+      }
     }
   });
 });

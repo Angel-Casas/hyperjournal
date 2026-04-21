@@ -8,9 +8,19 @@ const ZERO_TOLERANCE = 1e-9;
  * trades they represent. Pure; `coin` is a parameter (not derived from the
  * fills) so the caller can pass an empty list without ambiguity.
  *
- * Throws on unexpected input (unknown `dir`, dangling close, oversized
- * close). Loud-by-design — Session 3 does not tolerate silent data
- * corruption in the reconstruction layer.
+ * Handles truncated history gracefully: Hyperliquid caps `userFills` at 2000
+ * entries, so wallets with longer lifetime history will have closes in the
+ * window whose corresponding opens were truncated away. Leading close fills
+ * (closes that appear before any open) are dropped silently — their PnL is
+ * not representable as a full trade, but it also is not lost, since the
+ * PnL-oracle (checkRealizedPnl) filters HL's accounting to the same set of
+ * fills that made it into reconstructed trades.
+ *
+ * Throws on malformed input: unknown `dir` values, dangling closes that
+ * appear AFTER an open has already been seen (data corruption, not
+ * truncation), and oversized closes (flip in a single fill; HL appears to
+ * split flips but defensive anyway). Loud-by-design — Session 3 does not
+ * tolerate silent data corruption in the reconstruction layer.
  */
 export function reconstructCoinTrades(
   coin: string,
@@ -20,6 +30,20 @@ export function reconstructCoinTrades(
   let legs: TradeLeg[] = [];
   let side: TradeSide | null = null;
   let openSize = 0;
+  let hasSeenOpen = false;
+
+  // Prime state from the first fill's `startPosition` when nonzero. HL's
+  // startPosition is the (signed) position size before the fill was
+  // applied. A nonzero value on the very first fill means the user entered
+  // the window already holding a position from fills outside our view.
+  // Priming lets subsequent closes reduce against the true running size
+  // without tripping the oversized-close guard.
+  const first = fills[0];
+  if (first && Math.abs(first.startPosition) > ZERO_TOLERANCE) {
+    side = first.startPosition > 0 ? 'long' : 'short';
+    openSize = Math.abs(first.startPosition);
+    hasSeenOpen = true;
+  }
 
   const finalize = (status: 'closed' | 'open') => {
     if (legs.length === 0) return;
@@ -33,6 +57,7 @@ export function reconstructCoinTrades(
     const role = dirToRole(fill.dir);
 
     if (role === 'open') {
+      hasSeenOpen = true;
       const fillSide: TradeSide = fill.dir === 'Open Long' ? 'long' : 'short';
       if (side === null) {
         side = fillSide;
@@ -45,8 +70,16 @@ export function reconstructCoinTrades(
       openSize += fill.sz;
     } else {
       if (side === null) {
+        if (!hasSeenOpen) {
+          // Leading-truncation: close appears before any open. The matching
+          // open is outside our fill window. Drop this close from the
+          // reconstruction. Its realizedPnl remains visible in HL's raw
+          // closedPnl field; checkRealizedPnl filters the oracle sum to
+          // fills that actually became legs, so the comparison stays valid.
+          continue;
+        }
         throw new Error(
-          `reconstructCoinTrades: ${coin}: dangling close fill at tid=${fill.tid}`,
+          `reconstructCoinTrades: ${coin}: dangling close fill at tid=${fill.tid} (not a leading-truncation case)`,
         );
       }
       const closeSide: TradeSide = fill.dir === 'Close Long' ? 'long' : 'short';
@@ -100,7 +133,7 @@ function buildTrade(
   const sumOpenNotional = opens.reduce((s, l) => s + l.fill.sz * l.fill.px, 0);
   const sumCloseNotional = closes.reduce((s, l) => s + l.fill.sz * l.fill.px, 0);
 
-  const avgEntryPx = openedSize > 0 ? sumOpenNotional / openedSize : 0;
+  const avgEntryPx = openedSize > 0 ? sumOpenNotional / openedSize : null;
   const avgExitPx = closedSize > 0 ? sumCloseNotional / closedSize : null;
 
   const realizedPnl = closes.reduce((s, l) => s + l.fill.closedPnl, 0);

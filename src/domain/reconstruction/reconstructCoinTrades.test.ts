@@ -106,9 +106,60 @@ describe('reconstructCoinTrades', () => {
     expect(trade!.id).toBe('BTC-42');
   });
 
-  it('throws a typed error on a dangling close (no open trade)', () => {
+  it('primes from startPosition when the first fill enters mid-position (truncated history on opens)', () => {
+    // Simulates a coin like xyz:NVDA where opens were truncated away: first
+    // fill is a Close Long but the user was already long 10 units entering
+    // the window.
     const fills = [
-      makeFill({ dir: 'Close Long', sz: 1, time: 1, tid: 1, closedPnl: 10 }),
+      makeFill({ dir: 'Close Long', px: 120, sz: 4, time: 1, tid: 1, startPosition: 10, closedPnl: 80 }),
+      makeFill({ dir: 'Close Long', px: 130, sz: 6, time: 2, tid: 2, startPosition: 6, closedPnl: 180 }),
+    ];
+    const trades = reconstructCoinTrades('BTC', fills);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]!.status).toBe('closed');
+    expect(trades[0]!.side).toBe('long');
+    expect(trades[0]!.openedSize).toBeCloseTo(0, 9); // all opens are pre-window
+    expect(trades[0]!.closedSize).toBeCloseTo(10, 9);
+    expect(trades[0]!.avgEntryPx).toBeNull();
+    expect(trades[0]!.avgExitPx).toBeCloseTo((120 * 4 + 130 * 6) / 10, 9);
+    expect(trades[0]!.realizedPnl).toBeCloseTo(260, 9);
+  });
+
+  it('drops a pure leading close (startPosition=0 but close arrives anyway — malformed/edge)', () => {
+    // Edge case: startPosition=0 and first fill is a close. HL shouldn't
+    // produce this but be defensive; drop silently.
+    const fills = [
+      makeFill({ dir: 'Close Long', sz: 1, time: 1, tid: 1, startPosition: 0, closedPnl: 10 }),
+      makeFill({ dir: 'Open Long', px: 100, sz: 1, time: 2, tid: 2, startPosition: 0 }),
+      makeFill({ dir: 'Close Long', px: 110, sz: 1, time: 3, tid: 3, startPosition: 1, closedPnl: 10 }),
+    ];
+    const trades = reconstructCoinTrades('BTC', fills);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]!.legs).toHaveLength(2);
+    expect(trades[0]!.legs[0]!.fill.tid).toBe(2);
+    expect(trades[0]!.realizedPnl).toBeCloseTo(10, 9);
+  });
+
+  it('primes from negative startPosition (pre-existing short position)', () => {
+    const fills = [
+      makeFill({ dir: 'Close Short', px: 90, sz: 5, time: 1, tid: 1, startPosition: -5, closedPnl: 50 }),
+    ];
+    const trades = reconstructCoinTrades('BTC', fills);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]!.side).toBe('short');
+    expect(trades[0]!.status).toBe('closed');
+    expect(trades[0]!.closedSize).toBeCloseTo(5, 9);
+    expect(trades[0]!.openedSize).toBe(0);
+    expect(trades[0]!.avgEntryPx).toBeNull();
+  });
+
+  it('throws a typed error on a mid-stream dangling close (corruption, not truncation)', () => {
+    const fills = [
+      // Normal open → close cycle (hasSeenOpen = true afterwards)
+      makeFill({ dir: 'Open Long', sz: 1, time: 1, tid: 1 }),
+      makeFill({ dir: 'Close Long', sz: 1, time: 2, tid: 2, closedPnl: 10 }),
+      // Now a dangling close AFTER the reset — this is real corruption
+      makeFill({ dir: 'Close Long', sz: 1, time: 3, tid: 3, closedPnl: 5 }),
     ];
     expect(() => reconstructCoinTrades('BTC', fills)).toThrow(/dangling close/i);
   });

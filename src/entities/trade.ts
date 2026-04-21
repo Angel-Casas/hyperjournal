@@ -64,8 +64,13 @@ export type ReconstructedTrade = {
   /** Total size closed, summed across all 'close' legs (always positive). */
   readonly closedSize: number;
 
-  /** Size-weighted average entry price across all 'open' legs. */
-  readonly avgEntryPx: number;
+  /**
+   * Size-weighted average entry price across all 'open' legs, or null when
+   * the trade has no opens in our fill window (truncated history: the user
+   * entered the position before the earliest fill we can see, so we observe
+   * only the close side). openedSize will be 0 in that case.
+   */
+  readonly avgEntryPx: number | null;
   /**
    * Size-weighted average exit price across all 'close' legs, or null if
    * the trade is still open.
