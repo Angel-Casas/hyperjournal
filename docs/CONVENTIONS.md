@@ -44,7 +44,10 @@ _To be populated as patterns emerge._ Initial expectations:
 
 ## 4. Components and hooks
 
-_To be populated as patterns emerge._
+- Hooks that reach into storage (e.g., `useUserFills`, `useSavedWallets`) accept a `{ db?: HyperJournalDb }` options bag. Callers in the app use the default; tests inject a uniquely-named in-memory Dexie via the `db` option. Keep this pattern — it lets repository tests stay in `lib/storage/` and hook tests stay in `features/` without cross-pollution.
+- shadcn-style primitives (Button, Input, Label) live at `@lib/ui/components/*` and are imported directly (`import { Button } from '@lib/ui/components/button'`). Do NOT re-export them through feature `index.ts` — each consumer imports from the canonical path so refactors stay localized.
+- `cva` variant config lives in a sibling `.ts` file (e.g., `button-variants.ts`) not inside the component `.tsx`, so the component module stays component-only for React Fast Refresh (`react-refresh/only-export-components`).
+- For forms with submit buttons, disable the button whenever the domain predicate says the input is invalid. Do not rely on `onSubmit` guards alone — the disabled state communicates intent to the user.
 
 ---
 
@@ -64,6 +67,8 @@ _To be populated as patterns emerge._
 - Component-local ephemeral state → `useState` / `useReducer`.
 - **Addressable vs non-addressable UI state** (ADR-0004): anything worth a deep-link or browser-back lives in the route (wallet address, expanded-view selection, filter state if shareable). Only non-addressable UI state (panel hover, drawer-open toggles) lives in Zustand. Never put `selectedWalletAddress` in Zustand.
 - Never store Hyperliquid API responses directly in Zustand; they belong in TanStack Query's cache or Dexie.
+- **Dexie is the single persistent store** for user data (wallets, cached API responses, journals when they land, settings). All Dexie access goes through repository factories in `src/lib/storage/*-repo.ts` that expose typed methods; no direct `db.<table>.get(...)` calls from features, hooks, or components. Repository factories take the `HyperJournalDb` instance so tests inject a uniquely-named database per test.
+- **Cache-through pattern** for API-backed queries: `queryFn` reads Dexie first; if the entry is within TTL, returns it instantly; otherwise fetches live, validates, writes back to Dexie, returns fresh. On fetch failure with a prior cache, return stale data instead of an error. `useUserFills` is the canonical reference.
 
 ---
 

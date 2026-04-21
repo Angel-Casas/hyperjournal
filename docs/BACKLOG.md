@@ -39,9 +39,7 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 ## Session 1 deferrals
 
 - `[soon]` Replace placeholder PWA icons at `public/icons/icon-192.svg` and `public/icons/icon-512.svg` with proper 192/512 PNGs (and maskable variants). The `vite-plugin-pwa` manifest `icons` array is currently empty; wire up once real assets exist. Landed in Session 5 polish.
-- `[soon]` Configure Playwright + one E2E smoke test. Deferred from Session 1 because no real user flow exists yet; revisit in Session 4 once analytics-expanded has a click-through path.
-- `[soon]` shadcn/ui init and Button/Card registration. Deferred to Session 2 — installing shadcn primitives is low value until the wallet input actually needs them.
-- `[later]` Enable GitHub Pages manually in repo settings after first push: Settings → Pages → Source: GitHub Actions. Cannot be automated.
+- `[soon]` Configure Playwright + one E2E smoke test. Deferred from Session 1 because no real user flow exists yet; the wallet-paste → /w/:address flow landed in Session 2b so it's ready to cover. Add in Session 4 or earlier if flake surfaces.
 - `[maybe]` Consider a `useReducedMotion()` hook wrapper for Framer Motion so every animation honors `prefers-reduced-motion` at the component level in addition to the global CSS override. Decide after the first real animation lands.
 - `[maybe]` When ESLint 9 becomes unavoidable, migrate `.eslintrc.cjs` to flat config (`eslint.config.js`). Track `eslint-plugin-boundaries` flat-config support before doing this. Referenced in ADR-0005.
 - `[maybe]` Write an ADR recording the pnpm major version bump (9 → 10) if anything surprising ever surfaces. For now the SESSION_LOG and `packageManager` field are the only records.
@@ -51,5 +49,15 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 ## Session 2a deferrals
 
 - `[soon]` When `ClearinghouseState` is first consumed by a lower layer (likely a domain function in Session 3 that derives account-health metrics), promote it to an entity in `src/entities/` and mirror the `_schemaCheck` pattern used for `RawFill`. Until then, `ClearinghouseState` stays as a `lib/validation` type (documented in CONVENTIONS.md §7).
-- `[soon]` Add `.nvmrc` pinning Node 22 so local and CI Node versions are declared in one place. CI already uses Node 22 (fixed in `71df30f`); this just makes the local side match without each contributor configuring nvm themselves.
-- `[maybe]` If `postInfo<T>`'s `z.ZodType<T, z.ZodTypeDef, unknown>` signature is reused in other clients (Session 2b's Dexie repo queries, NanoGPT in Phase 4), extract a type alias — see ADR-0006's third alternative.
+- `[maybe]` If `postInfo<T>`'s `z.ZodType<T, z.ZodTypeDef, unknown>` signature is reused in other clients (NanoGPT in Phase 4), extract a type alias — see ADR-0006's third alternative.
+
+---
+
+## Session 2b deferrals
+
+- `[soon]` Cached fills read-through on reload is implemented via Dexie, but the UI still shows "Loading fills…" briefly on refresh while TanStack Query reruns the `queryFn`. The `queryFn` returns instantly from Dexie if fresh, so the flash is minimal — but Session 5 polish should add a persisted `initialData` path so the UI renders with cached data before the query even runs.
+- `[soon]` Add a manual "Refresh" button on `/w/:address` that calls `fillsCacheRepo.invalidate(address)` and triggers `fills.refetch()`. Currently the user has to wait for the 5-minute TTL to expire to see new fills.
+- `[soon]` Error states on `/w/:address` show the raw `Error.message` (ZodError JSON, HL status codes). Good for development, rough for users — Session 5 polish should translate to human copy.
+- `[maybe]` Wallet labels (currently always `null`) would be a small quality-of-life feature. Add a rename affordance to each saved wallet row. Low priority.
+- `[soon]` Export / import of Dexie data — critical for the "local-first backup" story. Session 5.
+- `[maybe]` EIP-55 checksum validation would catch typos that happen to be valid hex. Add an `isChecksumValid` domain function if/when user feedback suggests typos are a problem.

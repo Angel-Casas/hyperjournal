@@ -114,3 +114,50 @@ Every session **must** add an entry before closing. The goal is that a future se
 - The dependency graph direction is `entities → (nothing)`, `lib/validation → entities`, `lib/api → lib/validation, entities`. A change that inverts any of these edges is a design regression.
 
 ---
+
+## 2026-04-21 — Phase 1 Session 2b: Persistence + wallet feature
+
+**Session goal:** Wire Session 2a's data pipeline into a working end-to-end slice — paste a wallet, land on `/w/:address`, see fills loaded and cached locally, survive a reload. Saved wallets listed on the landing page.
+
+**Done:**
+
+- `.nvmrc` pinning Node 22 (closes Session 1 reviewer's CI/local divergence flag).
+- Hand-written shadcn-style primitives at `src/lib/ui/components/{button,input,label}.tsx` on top of `class-variance-authority`, `clsx`, and `tailwind-merge`. Deliberately skipped `shadcn init` because its interactive prompts and `tailwind.config.ts` auto-edits were at risk of clobbering HyperJournal's semantic token system. `buttonVariants` split into `button-variants.ts` so the component module stays component-only for React Fast Refresh.
+- Installed `dexie@4.0.11` (runtime), `fake-indexeddb@6.0.0` (dev).
+- `src/lib/storage/db.ts`: `HyperJournalDb` (Dexie) with three tables at schema v1 — `wallets` (&address, addedAt), `fillsCache` (&address, fetchedAt), `userSettings` (&key). `src/tests/setup.ts` now imports `fake-indexeddb/auto`.
+- `src/lib/storage/wallets-repo.ts` + 6 tests: `save` (upsert), `list` (sorted by addedAt desc), `findByAddress` (returns `null`, not undefined), `remove` (no-op on miss).
+- `src/lib/storage/fills-cache-repo.ts` + 6 tests: `get`, `set`, `invalidate`, `isFresh(ttl, now)` (clock is caller-supplied, not `Date.now()` inside the repo).
+- `src/features/wallets/hooks/useUserFills.ts` + 4 tests: TanStack Query hook with Dexie cache-through. `queryFn` returns cached fills within 5-min TTL, else fetches live + writes through. On fetch failure with a prior cache, returns stale data instead of surfacing an error. Tests mock `global.fetch` and pass an injected test db.
+- `src/features/wallets/hooks/useSavedWallets.ts`: list query + save/remove mutations, invalidating the list on mutate.
+- `src/features/wallets/components/WalletPaste.tsx` + 5 tests: shadcn-style Input + Button, live validation via `isValidWalletAddress`, `aria-invalid` / `aria-describedby` wiring.
+- `src/features/wallets/components/SavedWalletsList.tsx`: route-linked cards, empty/loading states.
+- `src/features/wallets/index.ts`: real public surface (was empty `export {}`).
+- `src/app/WalletView.tsx`: new `/w/:address` route; validates param, redirects `/` on invalid; upserts the wallet into the saved list on arrival; renders "Loaded N fills." from `useUserFills`.
+- `src/app/SplitHome.tsx` rewritten: left column hosts Paste + Recent wallets; right column keeps the analytics / journal preview stubs. Test wraps in QueryClientProvider + MemoryRouter now that the tree uses hooks.
+- End state: 50 tests passing across 8 files (was 29 after Session 2a). lint + typecheck + build all clean. Domain coverage still 100%.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Analytics panel integration on `/w/:address` — panel stays a stub. Session 4.
+- Manual "Refresh" button, persisted TanStack initialData, error-message translation — BACKLOG.
+- Export/import — Session 5.
+- Playwright E2E — now ready to write (flow exists); BACKLOG (Session 4 or earlier).
+- EIP-55 checksum validation — BACKLOG.
+
+**Gotchas for next session:**
+
+- `useSavedWallets().save.mutate` in `WalletView`'s useEffect runs on every address change but intentionally excludes `save` from deps (mutation identity is unstable; including it would infinite-loop). An eslint-disable-next-line with a prose justification is in place. Don't "fix" it.
+- `isFresh(address, ttlMs, now)` takes a caller-supplied clock. Do not change the signature to use `Date.now()` internally — tests rely on controlling time.
+- shadcn primitives are under `src/lib/ui/components/`. The boundaries rule treats all of `src/lib/**` as `lib`, so no new boundary exceptions.
+- Dexie module-level `db` singleton is shared by all production hooks. Tests always pass `{ db: new HyperJournalDb(uniqueName) }` so state is isolated.
+- Session 3 (reconstruction) reads from `FillsCacheEntry.fills` — that's the cached-but-validated RawFill array. No re-normalization needed before domain functions consume it.
+
+**Invariants assumed:**
+
+- Only `lib/storage/*-repo.ts` calls `db.<table>...` directly; features / hooks / components go through repo factories.
+- Dexie schema version 1 is the baseline. Any future schema change bumps the version and adds an `.upgrade()` function; never mutate the existing `.version(1).stores({...})` call.
+- The `cache-through` pattern (Dexie first, fetch if stale, write-back, fall back to stale on error) is the canonical shape for API-backed queries. Future hooks should mirror it, not invent new flows.
+
+---
