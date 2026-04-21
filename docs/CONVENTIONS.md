@@ -83,7 +83,7 @@ _To be populated as patterns emerge._ Initial expectations:
 - Setup file at `src/tests/setup.ts` — imports `@testing-library/jest-dom/vitest` matchers and runs `cleanup()` after each test.
 - React Testing Library for component tests — test user-visible behavior, not implementation details. Prefer `getByRole`/`getByText` over `getByTestId`.
 - Tests are co-located: `Foo.tsx` + `Foo.test.tsx` in the same directory (including for `src/app/` and `src/domain/**/`).
-- TDD for `domain/`: write the failing test first, confirm RED, then the minimal impl. `src/domain/wallets/isValidWalletAddress.*` is the canonical reference.
+- TDD for `domain/`: write the failing test first, confirm RED locally, then the minimal impl. `src/domain/wallets/isValidWalletAddress.*` is the canonical reference. The RED phase must be observed (run the test and see the failure for the expected reason) but does not need to be preserved as a separate commit — bundling the failing test + passing impl into one clean commit is acceptable, provided the RED observation happened in execution.
 - Playwright for E2E smoke tests — deferred to Session 4+ when a real user flow exists.
 - Use realistic fixtures for domain tests. A small, checked-in set of anonymized Hyperliquid sample payloads will live in `tests/fixtures/` (introduced in Session 2).
 

@@ -97,7 +97,7 @@ HyperJournal is frontend-only and statically deployable. The user prefers a zero
 
 ### Decision
 
-Deploy via GitHub Pages using `actions/deploy-pages` from a GitHub Actions workflow. The built artifact from `vite build` is published to the `gh-pages` environment. The app is served from a sub-path (`/<repo-name>/`), so `vite.base` is set accordingly at build time via an env var, and React Router uses `BrowserRouter` with `basename` matching. SPA routing on Pages is handled by committing a `public/404.html` that redirects unknown paths back to `index.html` with the original path preserved in `sessionStorage` (the standard spa-github-pages pattern).
+Deploy via GitHub Pages using `actions/deploy-pages` from a GitHub Actions workflow. The built artifact from `vite build` is published to the `gh-pages` environment. The app is served from a sub-path (`/<repo-name>/`), so `vite.base` is set accordingly at build time via an env var, and React Router uses the v6 data router (`createBrowserRouter`) with a `basename` matching. SPA routing on Pages is handled by committing a `public/404.html` that redirects unknown paths back to `index.html` with the original path preserved in `sessionStorage` (the standard spa-github-pages pattern).
 
 ### Alternatives considered
 
@@ -151,7 +151,7 @@ The app has real navigation: landing, split home, analytics-expanded, journal-ex
 
 ### Decision
 
-Use **react-router-dom v6** with `BrowserRouter` and a `basename` tied to `import.meta.env.BASE_URL`. View-mode state (split vs expanded analytics vs expanded journal) is expressed in routes, not in Zustand. UI state that is not addressable (filter drawer open, panel hover) stays in Zustand / local state.
+Use **react-router-dom v6** with `createBrowserRouter` (the v6 data router API) and a `basename` tied to `import.meta.env.BASE_URL`. The legacy `<BrowserRouter>` component form would work equivalently; we use the data-router form so the route table is centrally declared and future nested routes can attach loaders/actions without refactoring the shell. View-mode state (split vs expanded analytics vs expanded journal) is expressed in routes, not in Zustand. UI state that is not addressable (filter drawer open, panel hover) stays in Zustand / local state.
 
 ### Alternatives considered
 
