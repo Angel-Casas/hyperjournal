@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Wallet } from '@entities/wallet';
+import type { Wallet, WalletAddress } from '@entities/wallet';
 import type { RawFill } from '@entities/fill';
 
 /**
@@ -8,7 +8,7 @@ import type { RawFill } from '@entities/fill';
  * used by the cache layer to decide when to refetch.
  */
 export type FillsCacheEntry = {
-  readonly address: string;
+  readonly address: WalletAddress;
   readonly fetchedAt: number;
   readonly fills: ReadonlyArray<RawFill>;
 };

@@ -32,7 +32,7 @@ export function useUserFills(
     queryFn: async () => {
       const now = Date.now();
       const cached = await cache.get(address);
-      if (cached && now - cached.fetchedAt < FILLS_CACHE_TTL_MS) {
+      if (cached && (await cache.isFresh(address, FILLS_CACHE_TTL_MS, now))) {
         return cached.fills;
       }
       try {

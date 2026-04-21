@@ -7,6 +7,10 @@ export type WalletAddress = string & { readonly __brand: 'WalletAddress' };
 export type Wallet = {
   readonly address: WalletAddress;
   readonly label: string | null;
-  /** Unix ms when the user first added this wallet locally. */
+  /**
+   * Unix ms of the most recent visit to this wallet. Refreshed on every
+   * navigation to `/w/:address` so the "Recent wallets" list naturally
+   * sorts by last-viewed. Not a stable "first-added" timestamp.
+   */
   readonly addedAt: number;
 };

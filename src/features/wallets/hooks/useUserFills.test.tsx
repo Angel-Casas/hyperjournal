@@ -102,4 +102,36 @@ describe('useUserFills', () => {
 
     expect(result.current.error).toBeTruthy();
   });
+
+  it('returns stale cache data without error when fetch fails and stale cache exists', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response('{}', { status: 500 }));
+    const staleFills = [
+      {
+        coin: 'ETH',
+        px: 3000,
+        sz: 1,
+        side: 'B' as const,
+        time: 0,
+        startPosition: 0,
+        dir: '',
+        closedPnl: 0,
+        hash: '',
+        oid: 1,
+        crossed: true,
+        fee: 0,
+        tid: 99,
+        feeToken: 'USDC',
+        twapId: null,
+      },
+    ];
+    // fetchedAt = 0 makes the cache effectively infinitely stale (age ≫ TTL)
+    await createFillsCacheRepo(db).set(addr, staleFills, 0);
+
+    const { result } = renderHook(() => useUserFills(addr, { db }), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data![0]!.tid).toBe(99);
+  });
 });
