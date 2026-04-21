@@ -196,3 +196,33 @@ Task 5 of Phase 1 Session 1 was to enforce the CLAUDE.md §4 import boundaries v
 - Invariant: any new TS path alias added to `tsconfig.json` must also be visible to the resolver (it is, automatically, because the resolver reads `tsconfig.json`). Never define aliases outside `tsconfig.json`.
 
 ---
+
+## ADR-0006: Type `z.ZodType<T, z.ZodTypeDef, unknown>` for schemas passed through generics
+
+- **Date:** 2026-04-21
+- **Status:** Accepted
+- **Author:** Claude (phase-1 session 2a execution)
+
+### Context
+
+Session 2a's `postInfo<T>(body, schema)` helper in `src/lib/api/hyperliquid.ts` takes a Zod schema generically so both `fetchUserFills` and `fetchClearinghouseState` can share one POST + parse path. The obvious signature — `schema: z.ZodType<T>` — fails TypeScript when passed `UserFillsResponseSchema`, because `z.ZodType<T>` is shorthand for `z.ZodType<T, z.ZodTypeDef, T>`: it ties the schema's _input_ type to the output. Our schemas contain `NumericString` transforms (string → number), so the true input is `string`, not the output `number`. The default signature rejects those schemas.
+
+Three options existed: (1) widen the schema parameter's input generic to `unknown`, (2) cast the schema at the call site with `as`, (3) stop using a generic helper and write one function per endpoint.
+
+### Decision
+
+Type schema parameters that pass through generic helpers as `z.ZodType<T, z.ZodTypeDef, unknown>`. Input is `unknown` (which is always true for us — the input to `postInfo` is `JSON.parse(response.text())`, typed `unknown`), output stays fully-typed `T`, and transforms are preserved end-to-end.
+
+### Alternatives considered
+
+- **`as` casts at call sites.** Rejected: casts hide type mismatches and defeat the point of strict Zod typing. They also spread the workaround across every caller.
+- **One function per endpoint (no generic helper).** Rejected: duplicates the fetch-parse-validate pipeline in every function, which is exactly what `postInfo` exists to prevent. Four lines of boilerplate × N endpoints is a worse trade than one typed generic.
+- **Add a local type alias `type AnyZod<T> = z.ZodType<T, z.ZodTypeDef, unknown>`.** Rejected _for now_: the raw form is used in exactly one place (`postInfo`). If it spreads, revisit.
+
+### Consequences
+
+- Easier: one generic helper handles every `/info` request type; transforms work transparently.
+- Harder: the shape `z.ZodType<T, z.ZodTypeDef, unknown>` is unusual enough that future readers may attempt to "simplify" it back to `z.ZodType<T>` and re-introduce the bug. An inline comment at the helper's signature warns against this, and CONVENTIONS.md §7 documents the pattern.
+- Invariant: `postInfo` stays an internal helper. Callers always go through the typed wrappers (`fetchUserFills`, `fetchClearinghouseState`) so the input-type widening is never exposed to application code.
+
+---

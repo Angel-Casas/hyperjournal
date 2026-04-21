@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { ZodError } from 'zod';
 import { fetchClearinghouseState, fetchUserFills, HyperliquidApiError } from './hyperliquid';
 import type { WalletAddress } from '@entities/wallet';
 
@@ -63,9 +64,9 @@ describe('fetchUserFills', () => {
     }
   });
 
-  it('throws when the response body fails schema validation', async () => {
+  it('surfaces schema-validation failures as ZodError (not HyperliquidApiError)', async () => {
     vi.mocked(global.fetch).mockResolvedValue(new Response('[{"coin":"BTC"}]', { status: 200 }));
-    await expect(fetchUserFills(testWallet)).rejects.toThrow();
+    await expect(fetchUserFills(testWallet)).rejects.toThrow(ZodError);
   });
 });
 
@@ -90,5 +91,30 @@ describe('fetchClearinghouseState', () => {
     });
     expect(typeof state.time).toBe('number');
     expect(Array.isArray(state.assetPositions)).toBe(true);
+  });
+
+  it('throws HyperliquidApiError on non-2xx response', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response('{"error":"rate limited"}', { status: 429 }),
+    );
+    await expect(fetchClearinghouseState(testWallet)).rejects.toThrow(HyperliquidApiError);
+  });
+
+  it('preserves the status and body on HyperliquidApiError', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response('internal oops', { status: 500 }));
+    try {
+      await fetchClearinghouseState(testWallet);
+      throw new Error('expected throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(HyperliquidApiError);
+      const e = err as HyperliquidApiError;
+      expect(e.status).toBe(500);
+      expect(e.body).toBe('internal oops');
+    }
+  });
+
+  it('surfaces schema-validation failures as ZodError', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response('{}', { status: 200 }));
+    await expect(fetchClearinghouseState(testWallet)).rejects.toThrow(ZodError);
   });
 });

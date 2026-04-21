@@ -26,3 +26,15 @@ controller's memory system — do not hardcode it in source.
 
 Those are public on-chain data, not PII, and we need them intact for
 realistic tests. Only the wallet address is anonymized.
+
+## Caveats when refreshing
+
+- The anonymization pattern in the plan's Task 2 uses per-character case
+  classes (`[fF]`, `[aA]`, …) that match HL's current mixed-case /
+  EIP-55-style casing. If a future HL API response ever returns the
+  address as ALL-UPPERCASE (e.g., `0xF318AFB8...`), the sed pattern will
+  miss it. Always verify with `grep -rci '<real-address>' tests/fixtures/`
+  — a zero count is the hard invariant. If a refresh introduces new
+  casing variants, update the sed pattern before committing.
+- Run the final grep with the `-i` flag (case-insensitive) so the check
+  catches any casing regardless of which the substitution handled.

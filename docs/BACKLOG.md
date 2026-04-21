@@ -45,3 +45,11 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 - `[maybe]` Consider a `useReducedMotion()` hook wrapper for Framer Motion so every animation honors `prefers-reduced-motion` at the component level in addition to the global CSS override. Decide after the first real animation lands.
 - `[maybe]` When ESLint 9 becomes unavoidable, migrate `.eslintrc.cjs` to flat config (`eslint.config.js`). Track `eslint-plugin-boundaries` flat-config support before doing this. Referenced in ADR-0005.
 - `[maybe]` Write an ADR recording the pnpm major version bump (9 → 10) if anything surprising ever surfaces. For now the SESSION_LOG and `packageManager` field are the only records.
+
+---
+
+## Session 2a deferrals
+
+- `[soon]` When `ClearinghouseState` is first consumed by a lower layer (likely a domain function in Session 3 that derives account-health metrics), promote it to an entity in `src/entities/` and mirror the `_schemaCheck` pattern used for `RawFill`. Until then, `ClearinghouseState` stays as a `lib/validation` type (documented in CONVENTIONS.md §7).
+- `[soon]` Add `.nvmrc` pinning Node 22 so local and CI Node versions are declared in one place. CI already uses Node 22 (fixed in `71df30f`); this just makes the local side match without each contributor configuring nvm themselves.
+- `[maybe]` If `postInfo<T>`'s `z.ZodType<T, z.ZodTypeDef, unknown>` signature is reused in other clients (Session 2b's Dexie repo queries, NanoGPT in Phase 4), extract a type alias — see ADR-0006's third alternative.
