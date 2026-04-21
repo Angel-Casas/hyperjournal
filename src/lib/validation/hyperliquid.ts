@@ -63,3 +63,63 @@ const _schemaCheck: _SchemaMatchesEntity = true;
 void _schemaCheck;
 
 export type UserFillsResponse = z.infer<typeof UserFillsResponseSchema>;
+
+const MarginSummarySchema = z.object({
+  accountValue: NumericString,
+  totalMarginUsed: NumericString,
+  totalNtlPos: NumericString,
+  totalRawUsd: NumericString,
+});
+
+const LeverageSchema = z.object({
+  type: z.enum(['cross', 'isolated']),
+  value: z.number().int().positive(),
+});
+
+const CumFundingSchema = z.object({
+  allTime: NumericString,
+  sinceOpen: NumericString,
+  sinceChange: NumericString,
+});
+
+const PositionSchema = z.object({
+  coin: z.string().min(1),
+  szi: NumericString,
+  entryPx: NumericString.nullable(),
+  positionValue: NumericString,
+  unrealizedPnl: NumericString,
+  returnOnEquity: NumericString,
+  leverage: LeverageSchema,
+  liquidationPx: NumericString.nullable(),
+  marginUsed: NumericString,
+  maxLeverage: z.number().int().positive(),
+  cumFunding: CumFundingSchema,
+});
+
+const AssetPositionSchema = z.object({
+  position: PositionSchema,
+  type: z.enum(['oneWay']),
+});
+
+/**
+ * Account snapshot as returned by Hyperliquid's clearinghouseState endpoint.
+ *
+ * Shape observed in Task 2's live fixture fetch. `crossMaintenanceMarginUsed`
+ * is top-level (not inside `crossMarginSummary`). entryPx and liquidationPx are
+ * nullable. Forward-compat fields are stripped — when HL adds something we
+ * want, update the schema explicitly.
+ *
+ * This type is consumed by features/* only, not by domain/, so it lives in
+ * lib/validation rather than being promoted to an entity (per YAGNI).
+ */
+export const ClearinghouseStateSchema = z.object({
+  assetPositions: z.array(AssetPositionSchema),
+  marginSummary: MarginSummarySchema,
+  crossMarginSummary: MarginSummarySchema,
+  crossMaintenanceMarginUsed: NumericString,
+  withdrawable: NumericString,
+  time: z.number().int().positive(),
+});
+
+export type AssetPosition = z.infer<typeof AssetPositionSchema>;
+export type ClearinghouseState = z.infer<typeof ClearinghouseStateSchema>;

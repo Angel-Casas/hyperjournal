@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { UserFillsResponseSchema } from './hyperliquid';
+import { UserFillsResponseSchema, ClearinghouseStateSchema } from './hyperliquid';
 
 const fixturesDir = resolve(__dirname, '../../../tests/fixtures/hyperliquid');
 
@@ -56,5 +56,59 @@ describe('UserFillsResponseSchema', () => {
     const raw = JSON.parse(readFileSync(resolve(fixturesDir, 'user-fills.json'), 'utf8'));
     const mangled = [{ ...raw[0], px: 'not-a-number' }];
     expect(() => UserFillsResponseSchema.parse(mangled)).toThrow();
+  });
+});
+
+describe('ClearinghouseStateSchema', () => {
+  it('parses the committed clearinghouse-state fixture without errors', () => {
+    const raw = JSON.parse(readFileSync(resolve(fixturesDir, 'clearinghouse-state.json'), 'utf8'));
+    const parsed = ClearinghouseStateSchema.parse(raw);
+    expect(typeof parsed.time).toBe('number');
+    expect(parsed.assetPositions).toBeInstanceOf(Array);
+    expect(typeof parsed.marginSummary.accountValue).toBe('number');
+    expect(typeof parsed.crossMarginSummary.accountValue).toBe('number');
+    expect(typeof parsed.withdrawable).toBe('number');
+    expect(typeof parsed.crossMaintenanceMarginUsed).toBe('number');
+  });
+
+  it('coerces the signed-size (szi) on each asset position to a number', () => {
+    const raw = JSON.parse(readFileSync(resolve(fixturesDir, 'clearinghouse-state.json'), 'utf8'));
+    const parsed = ClearinghouseStateSchema.parse(raw);
+    for (const ap of parsed.assetPositions) {
+      expect(typeof ap.position.szi).toBe('number');
+      expect(typeof ap.position.unrealizedPnl).toBe('number');
+    }
+  });
+
+  it('rejects a response missing the required time field', () => {
+    expect(() =>
+      ClearinghouseStateSchema.parse({
+        assetPositions: [],
+        marginSummary: { accountValue: '0', totalMarginUsed: '0', totalNtlPos: '0', totalRawUsd: '0' },
+        crossMarginSummary: { accountValue: '0', totalMarginUsed: '0', totalNtlPos: '0', totalRawUsd: '0' },
+        crossMaintenanceMarginUsed: '0',
+        withdrawable: '0',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts isolated-leverage positions', () => {
+    const raw = JSON.parse(readFileSync(resolve(fixturesDir, 'clearinghouse-state.json'), 'utf8'));
+    if (raw.assetPositions.length === 0) {
+      return; // no positions to mutate; test is a no-op for this fixture
+    }
+    const mutated = {
+      ...raw,
+      assetPositions: [
+        {
+          ...raw.assetPositions[0],
+          position: {
+            ...raw.assetPositions[0].position,
+            leverage: { type: 'isolated', value: 10 },
+          },
+        },
+      ],
+    };
+    expect(() => ClearinghouseStateSchema.parse(mutated)).not.toThrow();
   });
 });
