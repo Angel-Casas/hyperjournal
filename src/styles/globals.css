@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-base: 220 13% 6%;
+    --bg-raised: 220 12% 9%;
+    --bg-overlay: 220 12% 12%;
+
+    --fg-base: 210 20% 96%;
+    --fg-muted: 215 16% 72%;
+    --fg-subtle: 217 12% 50%;
+
+    --border: 220 10% 18%;
+    --border-strong: 220 10% 26%;
+
+    --gain: 152 76% 50%;
+    --loss: 357 80% 60%;
+    --risk: 35 95% 58%;
+    --neutral: 215 16% 72%;
+    --accent: 262 82% 68%;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    font-family: theme('fontFamily.sans');
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
