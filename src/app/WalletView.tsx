@@ -2,6 +2,9 @@ import { useEffect } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { isValidWalletAddress } from '@domain/wallets/isValidWalletAddress';
 import {
+  EquityCurveChart,
+  PnlCalendarChart,
+  TradeHistoryList,
   useSavedWallets,
   useWalletMetrics,
   WalletMetricsGrid,
@@ -56,7 +59,14 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
         </section>
       )}
 
-      {metrics.stats && <WalletMetricsGrid stats={metrics.stats} />}
+      {metrics.stats && (
+        <>
+          <WalletMetricsGrid stats={metrics.stats} />
+          <EquityCurveChart trades={metrics.trades} />
+          <PnlCalendarChart trades={metrics.trades} />
+          <TradeHistoryList trades={metrics.trades} />
+        </>
+      )}
     </main>
   );
 }
