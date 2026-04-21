@@ -226,3 +226,30 @@ Type schema parameters that pass through generic helpers as `z.ZodType<T, z.ZodT
 - Invariant: `postInfo` stays an internal helper. Callers always go through the typed wrappers (`fetchUserFills`, `fetchClearinghouseState`) so the input-type widening is never exposed to application code.
 
 ---
+
+## ADR-0007: Raw `echarts` + a 40-LOC React wrapper instead of `echarts-for-react`
+
+- **Date:** 2026-04-21
+- **Status:** Accepted
+- **Author:** Claude (phase-1 session 4b planning)
+
+### Context
+
+Session 4b adds the equity curve and P/L calendar — both rendered with Apache ECharts per CLAUDE.md §2. The ecosystem offers two integration paths: `echarts-for-react` (a community wrapper ~200 LOC that owns lifecycle) or the raw `echarts` package plus a hand-written React wrapper. The entire wrapper we need is ~40 LOC: init on mount, `setOption` on prop change, `resize()` on ResizeObserver trigger, `dispose()` on unmount.
+
+### Decision
+
+Use the raw `echarts` package and write `src/lib/charts/EChartsBase.tsx` — a thin React wrapper that owns only the imperative lifecycle and exposes a declarative `option: EChartsOption` prop. Consumers build their own option objects (typically via `useMemo`) and pass them in. Do NOT build option objects inside the wrapper — it stays agnostic to chart type.
+
+### Alternatives considered
+
+- **`echarts-for-react`** — rejected: adds a dependency that does exactly what our 40 LOC does. Our wrapper is small enough that the maintenance cost is zero, and owning it gives us full control over the lifecycle (custom events, resize debouncing, etc.) without fighting a third-party abstraction.
+- **`recharts` / `visx`** — rejected: CLAUDE.md §2 pins ECharts for the animation and aesthetic defaults we want. Other libraries have different defaults that would require more restyling work.
+
+### Consequences
+
+- Easier: no extra dependency; ECharts upgrades independently; the lifecycle is visible and easy to reason about.
+- Harder: consumers MUST `useMemo` their option objects. Identical content with a new object reference triggers `setOption`, which rebuilds the chart. An inline comment in `EChartsBase` warns callers about this, and CONVENTIONS.md §11 documents the pattern.
+- Invariant: `EChartsBase` never constructs or mutates option objects — that is the consumer's job. This keeps the wrapper chart-type-agnostic and the consumer's data flow pure.
+
+---
