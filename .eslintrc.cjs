@@ -63,5 +63,18 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      // Test files are verification infrastructure, not production code.
+      // They legitimately need to reach across layer boundaries to exercise
+      // the pipeline end-to-end (e.g., a domain test importing a lib/
+      // validation schema to parse a fixture before feeding it to the
+      // function under test). Production code's boundary rule is unchanged.
+      files: ['**/*.test.ts', '**/*.test.tsx'],
+      rules: {
+        'boundaries/element-types': 'off',
+      },
+    },
+  ],
   ignorePatterns: ['dist', 'coverage', 'node_modules', '*.config.js', '*.config.ts'],
 };
