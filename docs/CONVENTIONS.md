@@ -119,3 +119,13 @@ _To be populated as patterns emerge._ Initial expectations:
 - Reference the SESSION_LOG entry in the body when relevant.
 - One logical change per commit. When a review finds an issue, the fix goes in a new commit (do not amend accepted commits).
 - Every commit ends with a `Co-Authored-By` trailer attributing the LLM that produced it, per repo convention.
+
+---
+
+## 11. Charts and data visualization
+
+- **ECharts integration** lives at `@lib/charts/EChartsBase` — a thin React wrapper owning imperative lifecycle (init, `setOption`, `resize` via `ResizeObserver`, `dispose`) per ADR-0007. Consumers pass a complete `EChartsOption`. The wrapper never constructs or mutates options itself.
+- **Memoize option objects.** Identical-contents-with-new-reference triggers `setOption` on every render. Wrap your option build in `useMemo([...derivedData])`; prefer a single pure-domain helper (`buildEquityCurve`, `buildPnlCalendar`) as the single source of truth.
+- **HSL tokens in chart options are hardcoded.** ECharts receives JS values, not Tailwind classes, so the semantic-token-only rule from §5 has a narrow exception for chart components: hoist the HSL strings into a `TOKEN` const at the top of the file. Do not inline hex values or raw `hsl(...)` deep inside nested config.
+- **Testing charts.** Real ECharts requires canvas and DOM layout that jsdom lacks. Use `vi.hoisted()` + `vi.mock('echarts', ...)` to replace the module with a fake `init` that returns a stub instance exposing `setOption`, `resize`, `dispose`, `on`, `off` as `vi.fn()`s. Tests verify the option shape passed to `setOption`, not the rendered chart. Visual correctness is confirmed in a browser during the session's manual check.
+- **Virtualized lists** use `@tanstack/react-virtual`. `useVirtualizer({ count, getScrollElement, estimateSize, overscan })` wires a scrollable parent div; render items absolutely-positioned via `translateY(v.start)`. jsdom also cannot compute scroll geometry, so virtualization-window behavior must be verified in-browser.
