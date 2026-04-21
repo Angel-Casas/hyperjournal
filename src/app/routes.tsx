@@ -1,10 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { SplitHome } from '@features/home';
+import { SplitHome } from './SplitHome';
 
 const router = createBrowserRouter(
-  [
-    { path: '/', element: <SplitHome /> },
-  ],
+  [{ path: '/', element: <SplitHome /> }],
   { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' },
 );
 

@@ -1,6 +1,4 @@
-type Props = { compact?: boolean };
-
-export function AnalyticsPanel({ compact = true }: Props) {
+export function AnalyticsPanel() {
   return (
     <section
       aria-labelledby="analytics-heading"
@@ -11,13 +9,11 @@ export function AnalyticsPanel({ compact = true }: Props) {
           Trading analytics
         </h2>
         <p className="text-sm text-fg-muted">
-          {compact
-            ? 'Paste a Hyperliquid wallet address to see performance, calendar, and key metrics.'
-            : 'Expanded analytics view — populated in Session 4.'}
+          Paste a Hyperliquid wallet address to see performance, calendar, and key metrics.
         </p>
       </header>
       <div className="flex flex-1 items-center justify-center text-fg-subtle">
-        <span className="font-mono text-xs uppercase tracking-wider">Empty state</span>
+        <span className="font-mono text-xs uppercase tracking-wider">No wallet connected</span>
       </div>
     </section>
   );

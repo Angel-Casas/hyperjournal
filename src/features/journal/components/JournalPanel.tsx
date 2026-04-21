@@ -1,6 +1,4 @@
-type Props = { compact?: boolean };
-
-export function JournalPanel({ compact = true }: Props) {
+export function JournalPanel() {
   return (
     <section
       aria-labelledby="journal-heading"
@@ -11,13 +9,11 @@ export function JournalPanel({ compact = true }: Props) {
           Journal & coaching
         </h2>
         <p className="text-sm text-fg-muted">
-          {compact
-            ? 'Recent notes, strategies, and coaching prompts will appear here.'
-            : 'Expanded journal view — populated in Session 5.'}
+          Recent notes, strategies, and coaching prompts will appear here.
         </p>
       </header>
       <div className="flex flex-1 items-center justify-center text-fg-subtle">
-        <span className="font-mono text-xs uppercase tracking-wider">Empty state</span>
+        <span className="font-mono text-xs uppercase tracking-wider">No entries yet</span>
       </div>
     </section>
   );

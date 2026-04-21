@@ -1,13 +1,9 @@
 import { create } from 'zustand';
 
-type Theme = 'dark';
-
 type UiState = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: 'dark';
 };
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>(() => ({
   theme: 'dark',
-  setTheme: (theme) => set({ theme }),
 }));
