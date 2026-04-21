@@ -6,9 +6,9 @@ type Tone = 'neutral' | 'gain' | 'loss' | 'risk';
 type Props = {
   label: string;
   value: string;
-  tone?: Tone;
-  provenance?: Provenance;
-  subtext?: string;
+  tone?: Tone | undefined;
+  provenance?: Provenance | undefined;
+  subtext?: string | undefined;
 };
 
 const toneClass: Record<Tone, string> = {
