@@ -1,3 +1,4 @@
-// Session 2 will populate this feature. Keeping an empty public surface so
-// imports referencing '@features/wallets' resolve without a TS error.
-export {};
+export { WalletPaste } from './components/WalletPaste';
+export { SavedWalletsList } from './components/SavedWalletsList';
+export { useSavedWallets } from './hooks/useSavedWallets';
+export { useUserFills } from './hooks/useUserFills';
