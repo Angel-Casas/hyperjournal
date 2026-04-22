@@ -50,79 +50,84 @@ export function TradeHistoryList({ trades }: Props) {
       <h2 id="history-heading" className="mb-4 text-lg font-semibold text-fg-base">
         Trade history
       </h2>
-      <div
-        className={cn(
-          'grid items-center gap-2 border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wider text-fg-muted',
-          GRID_COLUMNS,
-        )}
-      >
-        <div role="columnheader">Coin</div>
-        <div role="columnheader">Side</div>
-        <div role="columnheader">Opened</div>
-        <div role="columnheader">Status</div>
-        <div role="columnheader" className="text-right">
-          PnL
+      <div role="table" aria-label="Trade history">
+        <div role="rowgroup">
+          <div
+            role="row"
+            className={cn(
+              'grid items-center gap-2 border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wider text-fg-muted',
+              GRID_COLUMNS,
+            )}
+          >
+            <div role="columnheader">Coin</div>
+            <div role="columnheader">Side</div>
+            <div role="columnheader">Opened</div>
+            <div role="columnheader">Status</div>
+            <div role="columnheader" className="text-right">
+              PnL
+            </div>
+            <div role="columnheader" className="text-right">
+              Held
+            </div>
+          </div>
         </div>
-        <div role="columnheader" className="text-right">
-          Held
-        </div>
-      </div>
-      <div ref={parentRef} className="overflow-auto" style={{ height: VIEWPORT_HEIGHT }}>
-        <div
-          role="rowgroup"
-          style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
-        >
-          {virtualizer.getVirtualItems().map((v) => {
-            const t = sorted[v.index]!;
-            const pnlTone =
-              t.status === 'open'
-                ? 'text-fg-muted'
-                : t.realizedPnl > 0
-                  ? 'text-gain'
-                  : t.realizedPnl < 0
-                    ? 'text-loss'
-                    : 'text-fg-base';
-            return (
-              <div
-                key={t.id}
-                role="row"
-                className={cn(
-                  'grid items-center gap-2 border-b border-border py-2 text-sm',
-                  GRID_COLUMNS,
-                )}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  transform: `translateY(${v.start}px)`,
-                  height: ROW_HEIGHT,
-                }}
-              >
-                <div role="cell" className="truncate font-mono text-fg-base">
-                  {t.coin}
-                </div>
+        <div ref={parentRef} className="overflow-auto" style={{ height: VIEWPORT_HEIGHT }}>
+          <div
+            role="rowgroup"
+            style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+          >
+            {virtualizer.getVirtualItems().map((v) => {
+              const t = sorted[v.index]!;
+              const pnlTone =
+                t.status === 'open'
+                  ? 'text-fg-muted'
+                  : t.realizedPnl > 0
+                    ? 'text-gain'
+                    : t.realizedPnl < 0
+                      ? 'text-loss'
+                      : 'text-fg-base';
+              return (
                 <div
-                  role="cell"
-                  className={t.side === 'long' ? 'text-gain' : 'text-loss'}
+                  key={t.id}
+                  role="row"
+                  className={cn(
+                    'grid items-center gap-2 border-b border-border py-2 text-sm',
+                    GRID_COLUMNS,
+                  )}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transform: `translateY(${v.start}px)`,
+                    height: ROW_HEIGHT,
+                  }}
                 >
-                  {t.side}
+                  <div role="cell" className="truncate font-mono text-fg-base">
+                    {t.coin}
+                  </div>
+                  <div
+                    role="cell"
+                    className={t.side === 'long' ? 'text-gain' : 'text-loss'}
+                  >
+                    {t.side}
+                  </div>
+                  <div role="cell" className="font-mono text-xs text-fg-muted">
+                    {formatDate(t.openedAt)}
+                  </div>
+                  <div role="cell" className="text-fg-muted">
+                    {t.status}
+                  </div>
+                  <div role="cell" className={cn('text-right font-mono', pnlTone)}>
+                    {t.status === 'open' ? '—' : formatCurrency(t.realizedPnl)}
+                  </div>
+                  <div role="cell" className="text-right font-mono text-fg-muted">
+                    {t.status === 'open' ? '—' : formatHoldTime(t.holdTimeMs)}
+                  </div>
                 </div>
-                <div role="cell" className="font-mono text-xs text-fg-muted">
-                  {formatDate(t.openedAt)}
-                </div>
-                <div role="cell" className="text-fg-muted">
-                  {t.status}
-                </div>
-                <div role="cell" className={cn('text-right font-mono', pnlTone)}>
-                  {t.status === 'open' ? '—' : formatCurrency(t.realizedPnl)}
-                </div>
-                <div role="cell" className="text-right font-mono text-fg-muted">
-                  {t.status === 'open' ? '—' : formatHoldTime(t.holdTimeMs)}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

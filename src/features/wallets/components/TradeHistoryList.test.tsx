@@ -53,8 +53,17 @@ describe('TradeHistoryList', () => {
       makeTrade({ id: 'open', status: 'open', coin: 'SOL' }),
     ];
     render(<TradeHistoryList trades={trades} />);
-    const rowgroup = screen.getByRole('rowgroup');
-    // Rowgroup style height should match: count * ROW_HEIGHT (40px)
-    expect(rowgroup).toHaveStyle({ height: '120px' });
+    // Two rowgroups: [0] wraps the header row, [1] wraps the virtualized
+    // body rows and carries the total-height style the virtualizer sets.
+    const rowgroups = screen.getAllByRole('rowgroup');
+    expect(rowgroups).toHaveLength(2);
+    expect(rowgroups[1]).toHaveStyle({ height: '120px' });
+  });
+
+  it('wraps the columnheaders in a role="table" landmark', () => {
+    render(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} />);
+    // ARIA required: columnheader must be inside row, row inside
+    // rowgroup, rowgroup inside table. Lighthouse flags missing parents.
+    expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
   });
 });
