@@ -1,9 +1,24 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import type { ReactElement } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TradeHistoryList } from './TradeHistoryList';
 import type { ReconstructedTrade } from '@entities/trade';
+import type { WalletAddress } from '@entities/wallet';
 
 afterEach(() => cleanup());
+
+const ADDR = '0x0000000000000000000000000000000000000001' as WalletAddress;
+
+function wrap(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <QueryClientProvider client={client}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>
+  );
+}
 
 const makeTrade = (o: Partial<ReconstructedTrade>): ReconstructedTrade => ({
   id: 'x',
@@ -27,12 +42,12 @@ const makeTrade = (o: Partial<ReconstructedTrade>): ReconstructedTrade => ({
 
 describe('TradeHistoryList', () => {
   it('renders an empty-state message when there are no trades', () => {
-    render(<TradeHistoryList trades={[]} />);
+    render(wrap(<TradeHistoryList trades={[]} address={ADDR} />));
     expect(screen.getByText(/no trades yet/i)).toBeInTheDocument();
   });
 
   it('renders column headers when there are trades', () => {
-    render(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} />);
+    render(wrap(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} address={ADDR} />));
     expect(screen.getByRole('columnheader', { name: /coin/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /side/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /opened/i })).toBeInTheDocument();
@@ -42,7 +57,7 @@ describe('TradeHistoryList', () => {
   });
 
   it('renders section with trade-history heading', () => {
-    render(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} />);
+    render(wrap(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} address={ADDR} />));
     expect(screen.getByRole('heading', { name: /trade history/i })).toBeInTheDocument();
   });
 
@@ -52,18 +67,27 @@ describe('TradeHistoryList', () => {
       makeTrade({ id: 'new', coin: 'BTC' }),
       makeTrade({ id: 'open', status: 'open', coin: 'SOL' }),
     ];
-    render(<TradeHistoryList trades={trades} />);
-    // Two rowgroups: [0] wraps the header row, [1] wraps the virtualized
-    // body rows and carries the total-height style the virtualizer sets.
+    render(wrap(<TradeHistoryList trades={trades} address={ADDR} />));
     const rowgroups = screen.getAllByRole('rowgroup');
     expect(rowgroups).toHaveLength(2);
     expect(rowgroups[1]).toHaveStyle({ height: '120px' });
   });
 
   it('wraps the columnheaders in a role="table" landmark', () => {
-    render(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} />);
-    // ARIA required: columnheader must be inside row, row inside
-    // rowgroup, rowgroup inside table. Lighthouse flags missing parents.
+    render(wrap(<TradeHistoryList trades={[makeTrade({ id: 'a' })]} address={ADDR} />));
+    expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
+  });
+
+  // Body-row assertions (links, pencil icons) need real DOM layout for
+  // @tanstack/react-virtual to produce virtual items. jsdom can't
+  // compute scroll geometry, so getVirtualItems() returns [] and
+  // body rows aren't rendered. Those assertions live in the Playwright
+  // journal round-trip E2E spec where a real browser is available.
+  it('accepts the address prop and renders without crashing with journal integration', () => {
+    render(wrap(<TradeHistoryList trades={[makeTrade({ id: 'BTC-1', coin: 'BTC' })]} address={ADDR} />));
+    // Smoke: the heading + table landmark survive the Link + journal hook
+    // wiring without throwing.
+    expect(screen.getByRole('heading', { name: /trade history/i })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
   });
 });

@@ -1,10 +1,24 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, type SVGProps } from 'react';
+import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ReconstructedTrade } from '@entities/trade';
+import type { WalletAddress } from '@entities/wallet';
 import { formatCurrency, formatHoldTime } from '@lib/ui/format';
 import { cn } from '@lib/ui/utils';
 
-type Props = { trades: ReadonlyArray<ReconstructedTrade> };
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
+type Props = {
+  trades: ReadonlyArray<ReconstructedTrade>;
+  address: WalletAddress;
+  /**
+   * Set of tradeIds that have journal notes. Supplied by the route-level
+   * composer (src/app/*) which is allowed to consume features/journal;
+   * features/wallets can't import sibling features directly per the
+   * boundaries rule. Defaults to an empty set.
+   */
+  tradeIdsWithNotes?: ReadonlySet<string>;
+};
 
 const ROW_HEIGHT = 40;
 const VIEWPORT_HEIGHT = 300;
@@ -15,7 +29,11 @@ function formatDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-export function TradeHistoryList({ trades }: Props) {
+export function TradeHistoryList({
+  trades,
+  address,
+  tradeIdsWithNotes = EMPTY_IDS,
+}: Props) {
   const sorted = useMemo(
     () =>
       [...trades].sort((a, b) => {
@@ -86,12 +104,16 @@ export function TradeHistoryList({ trades }: Props) {
                     : t.realizedPnl < 0
                       ? 'text-loss'
                       : 'text-fg-base';
+              const hasNotes = tradeIdsWithNotes.has(t.id);
               return (
-                <div
+                <Link
                   key={t.id}
+                  to={`/w/${address}/t/${t.id}`}
                   role="row"
                   className={cn(
                     'grid items-center gap-2 border-b border-border py-2 text-sm',
+                    'ring-offset-bg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+                    'hover:bg-bg-overlay/40',
                     GRID_COLUMNS,
                   )}
                   style={{
@@ -103,8 +125,11 @@ export function TradeHistoryList({ trades }: Props) {
                     height: ROW_HEIGHT,
                   }}
                 >
-                  <div role="cell" className="truncate font-mono text-fg-base">
-                    {t.coin}
+                  <div role="cell" className="flex items-center gap-1 truncate font-mono text-fg-base">
+                    <span className="truncate">{t.coin}</span>
+                    {hasNotes && (
+                      <PencilIcon aria-label="Has journal notes" className="h-3 w-3 shrink-0 text-fg-muted" />
+                    )}
                   </div>
                   <div
                     role="cell"
@@ -124,12 +149,33 @@ export function TradeHistoryList({ trades }: Props) {
                   <div role="cell" className="text-right font-mono text-fg-muted">
                     {t.status === 'open' ? '—' : formatHoldTime(t.holdTimeMs)}
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function PencilIcon({
+  className,
+  ...rest
+}: SVGProps<SVGSVGElement> & { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
   );
 }
