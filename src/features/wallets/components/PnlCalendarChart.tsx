@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { EChartsBase } from '@lib/charts/EChartsBase';
 import { CHART_TOKENS as T } from '@lib/charts/tokens';
 import { buildPnlCalendar } from '@domain/metrics/buildPnlCalendar';
+import { PnlCalendarFallbackTable } from './PnlCalendarFallbackTable';
 import type { ReconstructedTrade } from '@entities/trade';
 import type { EChartsOption } from 'echarts';
 
@@ -10,11 +11,14 @@ type Props = { trades: ReadonlyArray<ReconstructedTrade> };
 export function PnlCalendarChart({ trades }: Props) {
   const calendar = useMemo(() => buildPnlCalendar(trades), [trades]);
 
+  const entries = useMemo(
+    () =>
+      Array.from(calendar.values()).sort((a, b) => a.date.localeCompare(b.date)),
+    [calendar],
+  );
+
   const option = useMemo<EChartsOption>(() => {
-    if (calendar.size === 0) return {};
-    const entries = Array.from(calendar.values()).sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
+    if (entries.length === 0) return {};
     const firstDate = entries[0]!.date;
     const lastDate = entries[entries.length - 1]!.date;
     const maxAbs = entries.reduce((m, e) => Math.max(m, Math.abs(e.pnl)), 1);
@@ -63,7 +67,7 @@ export function PnlCalendarChart({ trades }: Props) {
         },
       ],
     };
-  }, [calendar]);
+  }, [entries]);
 
   if (calendar.size === 0) {
     return (
@@ -82,6 +86,7 @@ export function PnlCalendarChart({ trades }: Props) {
         P/L calendar
       </h2>
       <EChartsBase option={option} style={{ height: 180 }} />
+      <PnlCalendarFallbackTable days={entries} />
     </section>
   );
 }
