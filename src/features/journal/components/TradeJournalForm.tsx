@@ -3,7 +3,7 @@ import { useTradeJournalEntry } from '../hooks/useTradeJournalEntry';
 import { TriStateRadio } from './TriStateRadio';
 import { Label } from '@lib/ui/components/label';
 import { cn } from '@lib/ui/utils';
-import type { JournalEntry, Mood } from '@entities/journal-entry';
+import type { Mood, TradeJournalEntry } from '@entities/journal-entry';
 import type { HyperJournalDb } from '@lib/storage/db';
 
 type Props = {
@@ -56,7 +56,7 @@ function isDraftEmpty(draft: DraftState): boolean {
   );
 }
 
-function entryToDraft(entry: JournalEntry | null): DraftState {
+function entryToDraft(entry: TradeJournalEntry | null): DraftState {
   if (!entry) return { ...EMPTY_DRAFT };
   return {
     preTradeThesis: entry.preTradeThesis,
@@ -110,7 +110,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     }
     setStatus({ kind: 'saving' });
     const now = Date.now();
-    const entry: JournalEntry = {
+    const entry: TradeJournalEntry = {
       id: hook.entry?.id ?? crypto.randomUUID(),
       scope: 'trade',
       tradeId,

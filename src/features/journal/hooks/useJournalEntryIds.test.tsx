@@ -4,6 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useJournalEntryIds } from './useJournalEntryIds';
 import { HyperJournalDb } from '@lib/storage/db';
+import type { TradeJournalEntry } from '@entities/journal-entry';
 
 let db: HyperJournalDb;
 
@@ -31,7 +32,7 @@ describe('useJournalEntryIds', () => {
   });
 
   it('returns a Set of tradeIds for existing entries', async () => {
-    await db.journalEntries.put({
+    const entry: TradeJournalEntry = {
       id: 'e1',
       scope: 'trade',
       tradeId: 'BTC-1',
@@ -44,7 +45,8 @@ describe('useJournalEntryIds', () => {
       planFollowed: null,
       stopLossUsed: null,
       provenance: 'observed',
-    });
+    };
+    await db.journalEntries.put(entry);
     const { result } = renderHook(() => useJournalEntryIds({ db }), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.ids.has('BTC-1')).toBe(true);

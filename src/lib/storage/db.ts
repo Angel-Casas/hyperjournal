@@ -14,15 +14,17 @@ export type { JournalEntry } from '@entities/journal-entry';
  * Dexie database for HyperJournal.
  *
  * v1: wallets, fillsCache, userSettings (Session 2b).
- * v2: adds journalEntries (Session 7a). Additive only — no .upgrade()
- *     callback because no existing row needs transforming.
+ * v2: adds journalEntries (Session 7a). Additive only.
+ * v3: adds `date` index on journalEntries for session-scope lookups
+ *     (Session 7b). Additive only — no .upgrade() callback because
+ *     no existing row needs transforming.
  *
  * Keys:
  * - wallets: primary key = address
  * - fillsCache: primary key = address
  * - userSettings: primary key = key (always 'singleton')
  * - journalEntries: primary key = id (UUID); indexed on tradeId, scope,
- *   updatedAt for list/filter queries
+ *   updatedAt, date for list/filter queries
  */
 export class HyperJournalDb extends Dexie {
   wallets!: EntityTable<Wallet, 'address'>;
@@ -42,6 +44,12 @@ export class HyperJournalDb extends Dexie {
       fillsCache: '&address, fetchedAt',
       userSettings: '&key',
       journalEntries: '&id, tradeId, scope, updatedAt',
+    });
+    this.version(3).stores({
+      wallets: '&address, addedAt',
+      fillsCache: '&address, fetchedAt',
+      userSettings: '&key',
+      journalEntries: '&id, tradeId, scope, updatedAt, date',
     });
   }
 }

@@ -111,6 +111,7 @@ describe('createImportRepo', () => {
       ],
     });
     const row = await db.journalEntries.get('e1');
-    expect(row?.preTradeThesis).toBe('t');
+    if (!row || row.scope !== 'trade') throw new Error('expected trade entry');
+    expect(row.preTradeThesis).toBe('t');
   });
 });

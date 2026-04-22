@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useTradeJournalEntry } from './useTradeJournalEntry';
 import { HyperJournalDb } from '@lib/storage/db';
-import type { JournalEntry } from '@entities/journal-entry';
+import type { TradeJournalEntry } from '@entities/journal-entry';
 
 let db: HyperJournalDb;
 
@@ -24,7 +24,7 @@ afterEach(async () => {
   db.close();
 });
 
-function makeEntry(overrides: Partial<JournalEntry> = {}): JournalEntry {
+function makeEntry(overrides: Partial<TradeJournalEntry> = {}): TradeJournalEntry {
   return {
     id: 'e1',
     scope: 'trade',

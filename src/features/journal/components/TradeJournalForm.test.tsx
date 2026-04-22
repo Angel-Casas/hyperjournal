@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TradeJournalForm } from './TradeJournalForm';
 import { HyperJournalDb } from '@lib/storage/db';
+import type { TradeJournalEntry } from '@entities/journal-entry';
 
 afterEach(() => {
   cleanup();
@@ -37,7 +38,7 @@ describe('TradeJournalForm', () => {
   });
 
   it('pre-populates from an existing entry', async () => {
-    await db.journalEntries.put({
+    const entry: TradeJournalEntry = {
       id: 'e1',
       scope: 'trade',
       tradeId: 'BTC-1',
@@ -50,7 +51,8 @@ describe('TradeJournalForm', () => {
       planFollowed: null,
       stopLossUsed: null,
       provenance: 'observed',
-    });
+    };
+    await db.journalEntries.put(entry);
     renderForm();
     await waitFor(() => {
       expect(screen.getByLabelText(/pre-trade thesis/i)).toHaveValue('my thesis');
@@ -67,7 +69,9 @@ describe('TradeJournalForm', () => {
     await waitFor(() => expect(screen.getByText(/saved at/i)).toBeInTheDocument());
     const rows = await db.journalEntries.toArray();
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.preTradeThesis).toBe('typed');
+    const first = rows[0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade entry');
+    expect(first.preTradeThesis).toBe('typed');
   });
 
   it('empty-form blur does NOT create a row', async () => {
@@ -88,7 +92,9 @@ describe('TradeJournalForm', () => {
     await waitFor(async () => {
       const rows = await db.journalEntries.toArray();
       expect(rows).toHaveLength(1);
-      expect(rows[0]!.mood).toBe('regretful');
+      const first = rows[0]!;
+      if (first.scope !== 'trade') throw new Error('expected trade entry');
+      expect(first.mood).toBe('regretful');
     });
   });
 
@@ -103,7 +109,9 @@ describe('TradeJournalForm', () => {
     await waitFor(async () => {
       const rows = await db.journalEntries.toArray();
       expect(rows).toHaveLength(1);
-      expect(rows[0]!.planFollowed).toBe(true);
+      const first = rows[0]!;
+      if (first.scope !== 'trade') throw new Error('expected trade entry');
+      expect(first.planFollowed).toBe(true);
     });
   });
 });

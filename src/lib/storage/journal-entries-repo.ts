@@ -1,25 +1,43 @@
-import type { JournalEntry } from '@entities/journal-entry';
+import type {
+  JournalEntry,
+  SessionJournalEntry,
+  TradeJournalEntry,
+} from '@entities/journal-entry';
 import type { HyperJournalDb } from './db';
 
 export type JournalEntriesRepo = {
-  findByTradeId(tradeId: string): Promise<JournalEntry | null>;
+  findByTradeId(tradeId: string): Promise<TradeJournalEntry | null>;
+  findByDate(date: string): Promise<SessionJournalEntry | null>;
   upsert(entry: JournalEntry): Promise<void>;
   remove(id: string): Promise<void>;
   listAll(): Promise<ReadonlyArray<JournalEntry>>;
   listAllTradeIds(): Promise<Set<string>>;
+  listSessionEntries(limit?: number): Promise<ReadonlyArray<SessionJournalEntry>>;
 };
 
 /**
- * Repository for journal entries. Session 7a only uses the trade scope
- * (one entry per tradeId); findByTradeId filters on the indexed column
- * and returns the first match. Multi-scope queries will grow this repo
- * in Sessions 7b+.
+ * Repository for journal entries. Session 7a added trade-scope lookups;
+ * 7b adds session-scope (findByDate + listSessionEntries). Return types
+ * narrow to the specific variant so callers don't need their own type
+ * guards.
  */
 export function createJournalEntriesRepo(db: HyperJournalDb): JournalEntriesRepo {
   return {
     async findByTradeId(tradeId) {
-      const entry = await db.journalEntries.where('tradeId').equals(tradeId).first();
-      return entry ?? null;
+      const entry = await db.journalEntries
+        .where('tradeId')
+        .equals(tradeId)
+        .first();
+      if (!entry || entry.scope !== 'trade') return null;
+      return entry;
+    },
+    async findByDate(date) {
+      const entry = await db.journalEntries
+        .where('date')
+        .equals(date)
+        .first();
+      if (!entry || entry.scope !== 'session') return null;
+      return entry;
     },
     async upsert(entry) {
       await db.journalEntries.put(entry);
@@ -31,8 +49,22 @@ export function createJournalEntriesRepo(db: HyperJournalDb): JournalEntriesRepo
       return db.journalEntries.toArray();
     },
     async listAllTradeIds() {
-      const rows = await db.journalEntries.toArray();
-      return new Set(rows.map((r) => r.tradeId));
+      const rows = await db.journalEntries
+        .where('scope')
+        .equals('trade')
+        .toArray();
+      // Narrowed: every row here is a TradeJournalEntry (scope filter).
+      return new Set(rows.map((r) => (r as TradeJournalEntry).tradeId));
+    },
+    async listSessionEntries(limit = 7) {
+      const rows = await db.journalEntries
+        .where('scope')
+        .equals('session')
+        .toArray();
+      // Narrowed: every row here is a SessionJournalEntry.
+      const sessions = rows as SessionJournalEntry[];
+      sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      return sessions.slice(0, limit);
     },
   };
 }

@@ -52,7 +52,7 @@ describe('createExportRepo', () => {
   });
 
   it('readSnapshot returns all journalEntries rows', async () => {
-    await db.journalEntries.put({
+    const tradeEntry: import('@entities/journal-entry').TradeJournalEntry = {
       id: 'e1',
       scope: 'trade',
       tradeId: 'BTC-1',
@@ -65,10 +65,13 @@ describe('createExportRepo', () => {
       planFollowed: null,
       stopLossUsed: null,
       provenance: 'observed',
-    });
+    };
+    await db.journalEntries.put(tradeEntry);
     const repo = createExportRepo(db);
     const snap = await repo.readSnapshot();
     expect(snap.journalEntries).toHaveLength(1);
-    expect(snap.journalEntries[0]!.preTradeThesis).toBe('t');
+    const first = snap.journalEntries[0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade entry');
+    expect(first.preTradeThesis).toBe('t');
   });
 });

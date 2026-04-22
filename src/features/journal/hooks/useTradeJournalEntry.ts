@@ -2,23 +2,23 @@ import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createJournalEntriesRepo } from '@lib/storage/journal-entries-repo';
 import { db as defaultDb, type HyperJournalDb } from '@lib/storage/db';
-import type { JournalEntry } from '@entities/journal-entry';
+import type { TradeJournalEntry } from '@entities/journal-entry';
 
 type Options = { db?: HyperJournalDb };
 
 export type UseTradeJournalEntryResult = {
-  entry: JournalEntry | null;
+  entry: TradeJournalEntry | null;
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
-  save: (entry: JournalEntry) => Promise<void>;
+  save: (entry: TradeJournalEntry) => Promise<void>;
   remove: (id: string) => Promise<void>;
 };
 
 /**
- * Read/write the journal entry for a single trade. Write invalidates
- * both this query and the cross-wallet tradeIds query (so the pencil
- * icon on trade-history rows updates immediately).
+ * Read/write the trade journal entry for a single tradeId. Write
+ * invalidates both this query and the cross-wallet tradeIds query
+ * (so the pencil icon on trade-history rows updates immediately).
  */
 export function useTradeJournalEntry(
   tradeId: string,
@@ -28,13 +28,13 @@ export function useTradeJournalEntry(
   const repo = useMemo(() => createJournalEntriesRepo(db), [db]);
   const queryClient = useQueryClient();
 
-  const query = useQuery<JournalEntry | null>({
+  const query = useQuery<TradeJournalEntry | null>({
     queryKey: ['journal', 'trade', tradeId],
     queryFn: () => repo.findByTradeId(tradeId),
   });
 
   const saveMutation = useMutation({
-    mutationFn: (entry: JournalEntry) => repo.upsert(entry),
+    mutationFn: (entry: TradeJournalEntry) => repo.upsert(entry),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade', tradeId] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade-ids'] });
@@ -50,7 +50,7 @@ export function useTradeJournalEntry(
   });
 
   const save = useCallback(
-    async (entry: JournalEntry) => {
+    async (entry: TradeJournalEntry) => {
       await saveMutation.mutateAsync(entry);
     },
     [saveMutation],
