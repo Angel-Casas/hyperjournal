@@ -13,15 +13,17 @@ export type ExportRepo = {
 export function createExportRepo(db: HyperJournalDb): ExportRepo {
   return {
     async readSnapshot() {
-      const [wallets, userSettings, fillsCache] = await Promise.all([
+      const [wallets, userSettings, fillsCache, journalEntries] = await Promise.all([
         db.wallets.toArray(),
         db.userSettings.get('singleton'),
         db.fillsCache.toArray(),
+        db.journalEntries.toArray(),
       ]);
       return {
         wallets,
         userSettings: userSettings ?? null,
         fillsCache,
+        journalEntries,
       };
     },
   };

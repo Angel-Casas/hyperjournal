@@ -10,6 +10,7 @@ const emptySnapshot: ExportSnapshot = {
   wallets: [],
   userSettings: null,
   fillsCache: [],
+  journalEntries: [],
 };
 
 function makeFile(overrides: Partial<ExportFile['data']> = {}): ExportFile {
@@ -41,6 +42,7 @@ describe('mergeImport', () => {
       wallets: [{ address: A, label: 'old', addedAt: 100 }],
       userSettings: null,
       fillsCache: [],
+      journalEntries: [],
     };
     const file = makeFile({
       wallets: [{ address: A, label: 'new', addedAt: 200 }],
@@ -56,6 +58,7 @@ describe('mergeImport', () => {
       wallets: [{ address: A, label: 'old', addedAt: 100 }],
       userSettings: null,
       fillsCache: [],
+      journalEntries: [],
     };
     const file = makeFile({
       wallets: [
@@ -86,6 +89,7 @@ describe('mergeImport', () => {
       wallets: [],
       userSettings: { key: 'singleton', lastSelectedAddress: A },
       fillsCache: [],
+      journalEntries: [],
     };
     const file = makeFile({ userSettings: null });
     const result = mergeImport(existing, file);
@@ -114,5 +118,43 @@ describe('mergeImport', () => {
     const result = mergeImport(emptySnapshot, file);
     expect(result.fillsCacheToUpsert).toEqual([]);
     expect(result.summary.fillsCacheEntries).toBe(0);
+  });
+
+  it('passes journalEntries through from the file', () => {
+    const file: ExportFile = {
+      app: 'HyperJournal',
+      formatVersion: 1,
+      exportedAt: 0,
+      data: {
+        wallets: [],
+        userSettings: null,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: 't',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            provenance: 'observed',
+          },
+        ],
+      },
+    };
+    const result = mergeImport(emptySnapshot, file);
+    expect(result.journalEntriesToUpsert).toHaveLength(1);
+    expect(result.summary.journalEntriesImported).toBe(1);
+  });
+
+  it('emits an empty journalEntriesToUpsert when the file has no journalEntries key', () => {
+    const file = makeFile();
+    const result = mergeImport(emptySnapshot, file);
+    expect(result.journalEntriesToUpsert).toEqual([]);
+    expect(result.summary.journalEntriesImported).toBe(0);
   });
 });

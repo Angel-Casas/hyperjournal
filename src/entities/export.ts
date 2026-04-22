@@ -1,6 +1,7 @@
 import type { Wallet } from './wallet';
 import type { UserSettings } from './user-settings';
 import type { FillsCacheEntry } from './fills-cache';
+import type { JournalEntry } from './journal-entry';
 
 /**
  * A full exportable snapshot of the Dexie-stored user data. Domain
@@ -15,6 +16,7 @@ export type ExportSnapshot = {
   readonly wallets: Array<Wallet>;
   readonly userSettings: UserSettings | null;
   readonly fillsCache: Array<FillsCacheEntry>;
+  readonly journalEntries: Array<JournalEntry>;
 };
 
 /**
@@ -42,6 +44,7 @@ export type ExportData = {
   readonly wallets: Array<Wallet>;
   readonly userSettings: UserSettings | null;
   readonly fillsCache?: Array<FillsCacheEntry> | undefined;
+  readonly journalEntries?: Array<JournalEntry> | undefined;
 };
 
 /**
@@ -66,10 +69,12 @@ export type MergeResult = {
   readonly walletsToUpsert: Array<Wallet>;
   readonly userSettingsToOverwrite: UserSettings | null;
   readonly fillsCacheToUpsert: Array<FillsCacheEntry>;
+  readonly journalEntriesToUpsert: Array<JournalEntry>;
   readonly summary: {
     readonly walletsAdded: number;
     readonly walletsUpdated: number;
     readonly userSettingsOverwritten: boolean;
     readonly fillsCacheEntries: number;
+    readonly journalEntriesImported: number;
   };
 };

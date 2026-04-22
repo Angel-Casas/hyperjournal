@@ -106,6 +106,16 @@ export function ImportPanel({ db = defaultDb }: Props) {
                 </span>
               </>
             ) : null}
+            {state.result.summary.journalEntriesImported > 0 ? (
+              <>
+                {' '}
+                and{' '}
+                <span className="font-medium">
+                  {state.result.summary.journalEntriesImported} journal entr
+                  {state.result.summary.journalEntriesImported === 1 ? 'y' : 'ies'}
+                </span>
+              </>
+            ) : null}
             {state.result.summary.userSettingsOverwritten ? '. Settings will be overwritten.' : '.'}
           </p>
           <div className="flex gap-2">

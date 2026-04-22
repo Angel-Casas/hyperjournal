@@ -71,6 +71,60 @@ describe('ExportFileSchema', () => {
       }),
     ).toThrow();
   });
+
+  it('parses a file with journalEntries rows', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: 't',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: 'calm',
+            planFollowed: true,
+            stopLossUsed: null,
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    expect(out.data.journalEntries).toHaveLength(1);
+    expect(out.data.journalEntries![0]!.mood).toBe('calm');
+  });
+
+  it('rejects a journalEntries row with an invalid scope', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        ...validFile,
+        data: {
+          ...validFile.data,
+          journalEntries: [
+            {
+              id: 'e1',
+              scope: 'weird',
+              tradeId: 'BTC-1',
+              createdAt: 1,
+              updatedAt: 1,
+              preTradeThesis: '',
+              postTradeReview: '',
+              lessonLearned: '',
+              mood: null,
+              planFollowed: null,
+              stopLossUsed: null,
+              provenance: 'observed',
+            },
+          ],
+        },
+      }),
+    ).toThrow();
+  });
 });
 
 describe('parseExport', () => {

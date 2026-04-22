@@ -51,10 +51,30 @@ const FillsCacheEntrySchema = z.object({
   fills: z.array(RawFillExportedSchema),
 });
 
+const MoodSchema = z
+  .enum(['calm', 'confident', 'anxious', 'greedy', 'regretful'])
+  .nullable();
+
+const JournalEntrySchema = z.object({
+  id: z.string().min(1),
+  scope: z.literal('trade'),
+  tradeId: z.string().min(1),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+  preTradeThesis: z.string(),
+  postTradeReview: z.string(),
+  lessonLearned: z.string(),
+  mood: MoodSchema,
+  planFollowed: z.boolean().nullable(),
+  stopLossUsed: z.boolean().nullable(),
+  provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
+});
+
 const ExportDataSchema = z.object({
   wallets: z.array(WalletSchema),
   userSettings: UserSettingsSchema,
   fillsCache: z.array(FillsCacheEntrySchema).optional(),
+  journalEntries: z.array(JournalEntrySchema).optional(),
 });
 
 export const ExportFileSchema = z.object({

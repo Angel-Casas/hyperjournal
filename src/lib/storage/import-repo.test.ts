@@ -22,11 +22,13 @@ const emptyResult: MergeResult = {
   walletsToUpsert: [],
   userSettingsToOverwrite: null,
   fillsCacheToUpsert: [],
+  journalEntriesToUpsert: [],
   summary: {
     walletsAdded: 0,
     walletsUpdated: 0,
     userSettingsOverwritten: false,
     fillsCacheEntries: 0,
+    journalEntriesImported: 0,
   },
 };
 
@@ -85,5 +87,30 @@ describe('createImportRepo', () => {
     });
     const row = await db.fillsCache.get(A);
     expect(row?.fetchedAt).toBe(42);
+  });
+
+  it('applyMerge upserts journalEntries', async () => {
+    const repo = createImportRepo(db);
+    await repo.applyMerge({
+      ...emptyResult,
+      journalEntriesToUpsert: [
+        {
+          id: 'e1',
+          scope: 'trade',
+          tradeId: 'BTC-1',
+          createdAt: 1,
+          updatedAt: 1,
+          preTradeThesis: 't',
+          postTradeReview: '',
+          lessonLearned: '',
+          mood: null,
+          planFollowed: null,
+          stopLossUsed: null,
+          provenance: 'observed',
+        },
+      ],
+    });
+    const row = await db.journalEntries.get('e1');
+    expect(row?.preTradeThesis).toBe('t');
   });
 });

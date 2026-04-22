@@ -9,6 +9,7 @@ const baseSnapshot: ExportSnapshot = {
   wallets: [{ address: ADDR, label: null, addedAt: 100 }],
   userSettings: { key: 'singleton', lastSelectedAddress: ADDR },
   fillsCache: [{ address: ADDR, fetchedAt: 200, fills: [] }],
+  journalEntries: [],
 };
 
 describe('buildExport', () => {
@@ -56,9 +57,34 @@ describe('buildExport', () => {
       wallets: [{ address: ADDR, label: null, addedAt: 100 }],
       userSettings: null,
       fillsCache: [],
+      journalEntries: [],
     };
     const walletsBefore = snap.wallets;
     buildExport(snap, { includeCache: true, now: 0 });
     expect(snap.wallets).toBe(walletsBefore);
+  });
+
+  it('includes journalEntries unconditionally (both includeCache=true and =false)', () => {
+    const snap: ExportSnapshot = {
+      ...baseSnapshot,
+      journalEntries: [
+        {
+          id: 'e1',
+          scope: 'trade',
+          tradeId: 'BTC-1',
+          createdAt: 1,
+          updatedAt: 1,
+          preTradeThesis: 't',
+          postTradeReview: '',
+          lessonLearned: '',
+          mood: null,
+          planFollowed: null,
+          stopLossUsed: null,
+          provenance: 'observed',
+        },
+      ],
+    };
+    expect(buildExport(snap, { includeCache: true, now: 0 }).data.journalEntries).toHaveLength(1);
+    expect(buildExport(snap, { includeCache: false, now: 0 }).data.journalEntries).toHaveLength(1);
   });
 });

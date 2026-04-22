@@ -14,17 +14,27 @@ export type ImportRepo = {
 export function createImportRepo(db: HyperJournalDb): ImportRepo {
   return {
     async applyMerge(result) {
-      await db.transaction('rw', db.wallets, db.userSettings, db.fillsCache, async () => {
-        if (result.walletsToUpsert.length > 0) {
-          await db.wallets.bulkPut(result.walletsToUpsert.slice());
-        }
-        if (result.userSettingsToOverwrite !== null) {
-          await db.userSettings.put(result.userSettingsToOverwrite);
-        }
-        if (result.fillsCacheToUpsert.length > 0) {
-          await db.fillsCache.bulkPut(result.fillsCacheToUpsert.slice());
-        }
-      });
+      await db.transaction(
+        'rw',
+        db.wallets,
+        db.userSettings,
+        db.fillsCache,
+        db.journalEntries,
+        async () => {
+          if (result.walletsToUpsert.length > 0) {
+            await db.wallets.bulkPut(result.walletsToUpsert.slice());
+          }
+          if (result.userSettingsToOverwrite !== null) {
+            await db.userSettings.put(result.userSettingsToOverwrite);
+          }
+          if (result.fillsCacheToUpsert.length > 0) {
+            await db.fillsCache.bulkPut(result.fillsCacheToUpsert.slice());
+          }
+          if (result.journalEntriesToUpsert.length > 0) {
+            await db.journalEntries.bulkPut(result.journalEntriesToUpsert.slice());
+          }
+        },
+      );
     },
   };
 }

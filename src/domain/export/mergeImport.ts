@@ -34,16 +34,19 @@ export function mergeImport(
   const userSettingsOverwritten = userSettingsToOverwrite !== null;
 
   const fillsCacheToUpsert = incoming.data.fillsCache ?? [];
+  const journalEntriesToUpsert = incoming.data.journalEntries ?? [];
 
   return {
     walletsToUpsert,
     userSettingsToOverwrite,
     fillsCacheToUpsert,
+    journalEntriesToUpsert,
     summary: {
       walletsAdded,
       walletsUpdated,
       userSettingsOverwritten,
       fillsCacheEntries: fillsCacheToUpsert.length,
+      journalEntriesImported: journalEntriesToUpsert.length,
     },
   };
 }

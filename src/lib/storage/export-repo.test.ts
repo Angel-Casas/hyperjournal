@@ -50,4 +50,25 @@ describe('createExportRepo', () => {
     expect(snap.fillsCache).toHaveLength(1);
     expect(snap.fillsCache[0]!.fetchedAt).toBe(42);
   });
+
+  it('readSnapshot returns all journalEntries rows', async () => {
+    await db.journalEntries.put({
+      id: 'e1',
+      scope: 'trade',
+      tradeId: 'BTC-1',
+      createdAt: 1,
+      updatedAt: 1,
+      preTradeThesis: 't',
+      postTradeReview: '',
+      lessonLearned: '',
+      mood: null,
+      planFollowed: null,
+      stopLossUsed: null,
+      provenance: 'observed',
+    });
+    const repo = createExportRepo(db);
+    const snap = await repo.readSnapshot();
+    expect(snap.journalEntries).toHaveLength(1);
+    expect(snap.journalEntries[0]!.preTradeThesis).toBe('t');
+  });
 });

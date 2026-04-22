@@ -20,10 +20,12 @@ export function buildExport(
         wallets: snapshot.wallets,
         userSettings: snapshot.userSettings,
         fillsCache: snapshot.fillsCache,
+        journalEntries: snapshot.journalEntries,
       }
     : {
         wallets: snapshot.wallets,
         userSettings: snapshot.userSettings,
+        journalEntries: snapshot.journalEntries,
       };
 
   return {
