@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
-import { useParams, Navigate, Link } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
+import { ZodError } from 'zod';
+import { HyperliquidApiError } from '@lib/api/hyperliquid';
 import { isValidWalletAddress } from '@domain/wallets/isValidWalletAddress';
 import {
   EquityCurveChart,
@@ -7,9 +9,56 @@ import {
   TradeHistoryList,
   useSavedWallets,
   useWalletMetrics,
+  WalletHeader,
   WalletMetricsGrid,
 } from '@features/wallets';
+import { Button } from '@lib/ui/components/button';
 import type { WalletAddress } from '@entities/wallet';
+
+type ErrorCopy = {
+  heading: string;
+  tone: 'loss' | 'risk' | 'neutral';
+};
+
+function errorCopyFor(error: Error | null): ErrorCopy {
+  if (error instanceof HyperliquidApiError) {
+    if (error.status >= 400 && error.status < 500) {
+      return {
+        heading:
+          "That wallet has no Hyperliquid history yet, or Hyperliquid doesn't recognize the address.",
+        tone: 'neutral',
+      };
+    }
+    return {
+      heading: "Couldn't reach Hyperliquid. Check your connection and try again.",
+      tone: 'risk',
+    };
+  }
+  if (error instanceof ZodError) {
+    return {
+      heading:
+        "Hyperliquid returned data HyperJournal doesn't yet understand. Please report this.",
+      tone: 'loss',
+    };
+  }
+  if (
+    error &&
+    (error.message.toLowerCase().includes('fetch') ||
+      error.message.toLowerCase().includes('network'))
+  ) {
+    return {
+      heading: "Couldn't reach Hyperliquid. Check your connection and try again.",
+      tone: 'risk',
+    };
+  }
+  return { heading: 'Something went wrong. Try refreshing.', tone: 'neutral' };
+}
+
+const toneClass = {
+  loss: 'text-loss',
+  risk: 'text-risk',
+  neutral: 'text-fg-base',
+} as const;
 
 export function WalletView() {
   const { address } = useParams<{ address: string }>();
@@ -27,23 +76,21 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
 
   useEffect(() => {
     save.mutate({ address, label: null, addedAt: Date.now() });
-    // Intentionally only on address change — save.mutate is idempotent
-    // (upsert on same row), and TanStack Query's mutation object identity
-    // changes on every render; including it in deps would infinite-loop.
+    // Mutation identity changes every render; intentional dep omission.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
+  const errorCopy = errorCopyFor(metrics.error);
+
   return (
     <main className="flex min-h-[100dvh] flex-col gap-6 bg-bg-base p-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-fg-base">Wallet</h1>
-          <p className="font-mono text-xs text-fg-muted">{address}</p>
-        </div>
-        <Link to="/" className="text-sm text-fg-muted underline hover:text-fg-base">
-          ← Back
-        </Link>
-      </header>
+      <WalletHeader
+        address={address}
+        isFetching={metrics.isFetching}
+        onRefresh={() => {
+          void metrics.refresh();
+        }}
+      />
 
       {metrics.isLoading && (
         <section className="rounded-lg border border-border bg-bg-raised p-6">
@@ -52,10 +99,27 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
       )}
 
       {metrics.isError && (
-        <section className="rounded-lg border border-border bg-bg-raised p-6">
-          <p className="text-loss">
-            Could not load wallet data: {metrics.error?.message}
-          </p>
+        <section
+          aria-labelledby="wallet-error-heading"
+          className="flex flex-col gap-3 rounded-lg border border-border bg-bg-raised p-6"
+        >
+          <h2
+            id="wallet-error-heading"
+            className={`text-base font-medium ${toneClass[errorCopy.tone]}`}
+          >
+            {errorCopy.heading}
+          </h2>
+          <div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                void metrics.refresh();
+              }}
+            >
+              Try again
+            </Button>
+          </div>
         </section>
       )}
 
