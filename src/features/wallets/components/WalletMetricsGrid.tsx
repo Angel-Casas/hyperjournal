@@ -62,8 +62,28 @@ export function WalletMetricsGrid({ stats }: Props) {
       />
       <MetricCard
         label="Profit factor"
-        value={stats.profitFactor !== null ? stats.profitFactor.toFixed(2) : '—'}
+        value={
+          stats.profitFactor !== null
+            ? stats.profitFactor.toFixed(2)
+            : stats.avgWin !== null && stats.avgLoss === null
+              ? '∞'
+              : '—'
+        }
+        tone={
+          stats.profitFactor === null &&
+          stats.avgWin !== null &&
+          stats.avgLoss === null
+            ? 'gain'
+            : 'neutral'
+        }
         provenance={stats.provenance}
+        subtext={
+          stats.profitFactor === null &&
+          stats.avgWin !== null &&
+          stats.avgLoss === null
+            ? 'no losing trades'
+            : undefined
+        }
       />
       <MetricCard
         label="Max drawdown"
