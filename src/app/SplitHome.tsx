@@ -17,20 +17,30 @@ export function SplitHome() {
 
   return (
     <main className="grid h-[100dvh] grid-cols-1 gap-4 bg-bg-base p-4 md:grid-cols-2">
-      <section className="flex h-full flex-col gap-4">
-        <div className="rounded-lg border border-border bg-bg-raised p-6">
-          <h2 className="mb-4 text-lg font-semibold text-fg-base">Paste a wallet</h2>
+      <div className="flex h-full flex-col gap-4">
+        <section
+          aria-labelledby="paste-heading"
+          className="rounded-lg border border-border bg-bg-raised p-6"
+        >
+          <h2 id="paste-heading" className="mb-4 text-lg font-semibold text-fg-base">
+            Paste a wallet
+          </h2>
           <WalletPaste onSubmit={handlePaste} />
-        </div>
-        <div className="flex-1 rounded-lg border border-border bg-bg-raised p-6">
-          <h2 className="mb-4 text-lg font-semibold text-fg-base">Recent wallets</h2>
+        </section>
+        <section
+          aria-labelledby="recent-heading"
+          className="flex-1 rounded-lg border border-border bg-bg-raised p-6"
+        >
+          <h2 id="recent-heading" className="mb-4 text-lg font-semibold text-fg-base">
+            Recent wallets
+          </h2>
           <SavedWalletsList />
-        </div>
-      </section>
-      <section className="flex h-full flex-col gap-4">
+        </section>
+      </div>
+      <div className="flex h-full flex-col gap-4">
         <AnalyticsPanel />
         <JournalPanel />
-      </section>
+      </div>
     </main>
   );
 }

@@ -22,7 +22,7 @@ export function SavedWalletsList() {
         <li key={wallet.address}>
           <Link
             to={`/w/${wallet.address}`}
-            className="flex items-center justify-between gap-3 rounded border border-border bg-bg-overlay px-3 py-2 font-mono text-xs text-fg-muted hover:text-fg-base"
+            className="flex items-center justify-between gap-3 rounded border border-border bg-bg-overlay px-3 py-2 font-mono text-xs text-fg-muted ring-offset-bg-base hover:text-fg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             <span className="truncate">{wallet.label ?? wallet.address}</span>
             <span className="text-fg-subtle">→</span>
