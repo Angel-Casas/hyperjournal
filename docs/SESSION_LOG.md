@@ -288,3 +288,58 @@ Every session **must** add an entry before closing. The goal is that a future se
 - The four visualizations on `/w/:address` consume the SAME `trades` reference from `useWalletMetrics`. If a view needs a filtered subset, the caller filters and passes a different prop — the domain transforms don't know about filtering.
 
 ---
+
+## 2026-04-22 — Phase 1 Session 5: Analytics-side polish
+
+**Session goal:** Close the gap between "charts render" and "shipped product" on `/w/:address` — responsive non-regression, PWA install, medium-depth a11y, error UX + refresh, and the break-even / profit-factor-∞ / ECharts-trim stragglers. No journaling, no export/import.
+
+**Done:**
+
+- `TradeStats.breakEvenCount` added to the entity + `computeTradeStats`. Surfaced as subtext on the Closed-trades metric card. [+2 tests; real-fixture totalPnl invariant preserved]
+- Profit factor renders `∞` with the gain tone and "no losing trades" subtext when `avgWin !== null && avgLoss === null`. Domain unchanged — disambiguation lives in the UI by inspecting avgWin/avgLoss, because `profitFactor: null` alone can't tell "no trades" from "all wins."
+- `WalletHeader` component extracted from `WalletView`. Carries the wallet chip (monospace, truncated), a Back link, and a Refresh button. [+4 tests]
+- `useWalletMetrics` now returns `isFetching` and `refresh()`. `refresh()` invalidates both the Dexie cache entry AND the TanStack Query entry before refetching, bypassing the 5-minute TTL. [+1 test; uses `act()` to silence state-update warnings]
+- Error paths on `/w/:address` map to human copy per error type: HyperliquidApiError 4xx ("no Hyperliquid history"), 5xx/network ("couldn't reach Hyperliquid"), ZodError ("data HyperJournal doesn't yet understand"), unknown ("something went wrong"). "Try again" button on every error path. [+5 tests, all wired through a mocked fetch at the global level]
+- `PnlCalendarFallbackTable` — sr-only `<table>` rendered as a sibling of the aria-hidden ECharts canvas inside the same `<section>`. Screen readers now hear per-day rows (date / PnL / trade count) instead of silence. [+4 tests]
+- `focus-visible` rings added to `SavedWalletsList`'s `<Link>` (the only remaining interactive primitive missing one — Button and Input already carried the class string). Promoted both left-column cards on `SplitHome` from `<div>`-with-`<h2>` to full `<section aria-labelledby>` landmarks.
+- **Contrast audit:** computed WCAG AA ratios for every foreground token against both `bg-base` (6% L) and `bg-raised` (9% L). Only failure: `fg-subtle` on `bg-raised` at 4.29:1 (below 4.5 AA threshold for normal-size text — MetricCard's `text-xs` subtext uses exactly this combo). Bumped `--fg-subtle` lightness 50 → 55 %, new ratio 5.12. No other token adjustments; CHART_TOKENS unaffected since it doesn't reference fg-subtle.
+- **Lighthouse accessibility audit:** one real finding — `[role]s are not contained by their required parent element` on `TradeHistoryList`. The six `columnheader` divs and six `cell` divs were inside a bare grid div, violating ARIA's "columnheader inside row inside rowgroup inside table" chain. Restructured with a proper `role="table"` wrapper, a header `role="row"` inside one rowgroup, and the virtualized body rows inside a second rowgroup. [+1 test for the table landmark; updated rowgroup test to pick `getAllByRole('rowgroup')[1]`]
+- Keyboard tab-order sweep: confirmed clean. Refresh → Back on `/w/:address`; paste input → Analyze → saved-wallet links on `/`. Focus ring visible at every stop.
+- **PWA install verification passed:** placeholder icons shipped as SVG (icon-192, icon-512, maskable-192, maskable-512). Manifest `icons` array populated with all four (purpose `any` × 2, `maskable` × 2). `includeAssets: ['favicon.svg', 'icons/*.svg']` so Workbox precaches them. apple-touch-icon `<link>` added to `index.html`. Chrome desktop install prompt appears on `pnpm preview`. Lighthouse installability check passes.
+- **ECharts bundle trim:** new `@lib/charts/echarts-setup` module registers the parts we actually use (`LineChart`, `HeatmapChart`, `CalendarComponent`, `GridComponent`, `TooltipComponent`, `VisualMapComponent`, `CanvasRenderer`) on `echarts/core` and re-exports the namespace. `EChartsBase` imports from it; chart-component tests mock the new path. The `ECharts` runtime type from `'echarts'` has a divergent private-field declaration from `EChartsType` in `echarts/core` — switched `instanceRef` to `EChartsType`.
+  - **Baseline (before trim):** dist `1,556,480` bytes raw, gzipped JS `492,176` bytes. Precache `1,474.20 KiB`.
+  - **Post-trim:** dist `1,056,768` bytes raw, gzipped JS `324,387` bytes. Precache `974.02 KiB`.
+  - **Delta:** `167,789` bytes (~164 KiB, ~34 %) gzipped saved. ~488 KiB raw.
+- **Responsive sweep:** user-verified that /w/:address and / render correctly at all tested viewports (desktop breakpoints hold; mobile/tablet breakpoints change but don't break). No inline fixes required; BACKLOG entry for mobile polish kept as a future focused session since we didn't identify specific gaps this time.
+- End state: **175 tests passing across 26 files** (was 156 across 23 after Session 4b; +19 this session). Gauntlet clean: typecheck + lint + test + build.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Mobile-optimized layouts — the spot-check confirmed breakpoints change but did not deep-dive on gaps. BACKLOG entry kept as a trigger for a future focused session.
+- Persisted TanStack Query `initialData` — two viable approaches (sync Dexie read via `placeholderData` vs `persistQueryClient` + async-storage-persister), deserves an ADR. [BACKLOG]
+- Real designed PWA icons — placeholders are adequate for installability. Phase 5 polish.
+- Journaling, export/import, Playwright E2E — Session 6+.
+
+**Gotchas for next session:**
+
+- `useWalletMetrics().refresh()` returns the refetch promise; callers that disable a button while fetching should use `metrics.isFetching` (already wired in `WalletHeader`).
+- The sr-only table fallback for the PnL calendar consumes `entries` (the already-sorted `PnlCalendarDay[]`) that `PnlCalendarChart` now memoizes separately from the option-object useMemo. If a timezone option lands (BACKLOG), the table picks it up automatically.
+- `echarts/core` setup lives at `@lib/charts/echarts-setup`. New chart types in Phase 2 MUST register their chart + required components in that file; missing registrations throw "Component X not exists" at runtime, not at build time.
+- `EChartsType` (runtime instance) is exported from `echarts/core`, NOT from the `'echarts'` umbrella. Type-only `EChartsOption` from `'echarts'` is fine — erased at compile time.
+- The apple-touch-icon is SVG; older iOS will not render it. Phase 5 replaces with PNG.
+- `WalletView.test.tsx` mocks `fetch` at the global level and asserts on the human error copy by text regex. If the copy changes, update the regexes in the same commit — they are the contract.
+- `ring-offset-bg-base` is the canonical offset color for `focus-visible:ring`. Any new clickable element that doesn't use the shared Button/Input primitives must include this class string or the focus ring sits awkwardly against the raised bg.
+- `TradeHistoryList` now has TWO rowgroups (header + virtualized body). Test code targeting "the" rowgroup must use `getAllByRole('rowgroup')[1]` for the body or index `[0]` for the header.
+- The `fg-subtle` HSL bump (50 → 55 %) is live in `src/styles/globals.css`. If a future session reads the original 50 % in an old plan or a stale reference, they may mistakenly "correct" it — the bump is intentional and lint-silent.
+
+**Invariants assumed:**
+
+- `TradeStats.breakEvenCount` counts closed trades with `realizedPnl === 0` exactly. Existing win/loss subset definitions continue to exclude zeros.
+- The ∞ render branch requires BOTH `avgWin !== null` AND `avgLoss === null`. The domain still returns `profitFactor: null` for this case; the UI is the sole place where the ambiguity is resolved.
+- Chart options remain memoized per ADR-0007 / CONVENTIONS §11. The PnlCalendar change replaced an inline sort with a `useMemo` — still pure, same referential-stability guarantee.
+- The ECharts runtime is imported ONLY through `@lib/charts/echarts-setup`. Any direct `import ... from 'echarts'` for runtime values regresses the bundle size.
+- No new runtime dependencies this session. SVG icons avoid rasterization toolchains entirely; the `sharp` devDep considered in the plan draft was rejected.
+
+---

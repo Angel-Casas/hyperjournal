@@ -38,7 +38,6 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 
 ## Session 1 deferrals
 
-- `[soon]` Replace placeholder PWA icons at `public/icons/icon-192.svg` and `public/icons/icon-512.svg` with proper 192/512 PNGs (and maskable variants). The `vite-plugin-pwa` manifest `icons` array is currently empty; wire up once real assets exist. Landed in Session 5 polish.
 - `[soon]` Configure Playwright + one E2E smoke test. Deferred from Session 1 because no real user flow exists yet; the wallet-paste → /w/:address flow landed in Session 2b so it's ready to cover. Add in Session 4 or earlier if flake surfaces.
 - `[maybe]` Consider a `useReducedMotion()` hook wrapper for Framer Motion so every animation honors `prefers-reduced-motion` at the component level in addition to the global CSS override. Decide after the first real animation lands.
 - `[maybe]` When ESLint 9 becomes unavoidable, migrate `.eslintrc.cjs` to flat config (`eslint.config.js`). Track `eslint-plugin-boundaries` flat-config support before doing this. Referenced in ADR-0005.
@@ -105,8 +104,15 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` Equity-curve benchmarks (e.g., overlay a "100% HYPE hodl" line, or "BTC price × initial equity") to contextualize performance. Plan §19 hints at this under Tier-3.
 - `[maybe]` Export-chart-as-PNG via ECharts' `getDataURL()`. Useful for sharing; plan §2.1 mentions shareability as a secondary goal.
 - `[maybe]` Click on a calendar day → filter trade-history list to that day. Needs a shared "active filter" state (Zustand or route param). Tie to the BACKLOG filter-panel entry.
-- `[soon]` ECharts adds ~1MB to the bundle. Consider tree-shaking via `echarts/core` + individual chart/component imports instead of `import * as echarts from 'echarts'`. Saves ~400-600KB gzipped. Measure first, optimize if Session 5's PWA install flow is slow.
 - `[maybe]` Equity curve on very long histories may be dense. Consider downsampling (LTTB or naïve bucketing) when points > 2000.
 - `[soon]` Log-scale color interpolation for the P/L calendar heatmap. Today it's linear — small $5 days barely tint against the neutral baseline on a wallet with $500 outlier days. Session 4b's plan called for `log(|pnl|)` scaling; deferred for implementation simplicity.
-- `[maybe]` Proper `prefers-reduced-motion` awareness in ECharts options. Today `animation: false` is unconditional for both chart components. A `matchMedia('(prefers-reduced-motion: reduce)')` read inside the useMemo would enable animation by default and honor the user preference. Low priority until motion design lands in Session 5.
-- `[maybe]` ECharts bundle-size trim via `echarts/core` + individual chart imports (LineChart, HeatmapChart, CalendarComponent, TooltipComponent, etc.). Current `import * as echarts from 'echarts'` ships the whole library (~1MB). Tree-shaking saves 400–600 KB gzipped. Session 5 polish.
+- `[maybe]` Proper `prefers-reduced-motion` awareness in ECharts options. Today `animation: false` is unconditional for both chart components. A `matchMedia('(prefers-reduced-motion: reduce)')` read inside the useMemo would enable animation by default and honor the user preference. Low priority until motion design lands.
+
+---
+
+## Session 5 deferrals
+
+- `[soon]` Mobile polish session. Session 5 confirmed the desktop viewports are clean and that mobile/tablet breakpoints *change* without breaking, but did not deep-dive on gaps. A future focused session should: audit 320–480 px viewports, consider a collapsible side sheet for filters (when they land), make calendar cells touch-friendly (today ~16 px, too small for taps), and decide whether trade-history columns card-stack below `md` instead of horizontal-scrolling. Trigger-point: next time the app is used on a phone.
+- `[soon]` Persisted TanStack Query `initialData` for `useUserFills`. Two viable approaches: (a) synchronous Dexie cache read returning `placeholderData` (no new dep, but Dexie is async, so this needs an IndexedDB-direct synchronous shim — not idiomatic and arguably fragile); (b) `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` (~3 KB, idiomatic, two new deps → requires an ADR). The "Loading fills…" flash on refresh is minor but real. ADR required before picking.
+- `[later]` Real designed PWA icons. Session 5 ships SVG placeholders for icon-{192,512} and maskable-{192,512}. Phase 5 polish should replace them with designed iconography. Also add PNG fallbacks for iOS older versions that don't render SVG apple-touch-icon.
+- `[maybe]` Consider using `role="grid"` instead of `role="table"` on `TradeHistoryList` if keyboard-grid navigation (arrow-key between cells, Home/End, PageUp/PageDown) becomes a feature. For now `role="table"` is correct since the list is read-only and not cell-navigable.
