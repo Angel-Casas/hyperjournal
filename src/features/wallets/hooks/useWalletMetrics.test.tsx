@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ReactNode } from 'react';
@@ -64,5 +64,26 @@ describe('useWalletMetrics', () => {
     const { result } = renderHook(() => useWalletMetrics(addr, { db }), { wrapper });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeTruthy();
+  });
+
+  it('refresh() invalidates the Dexie cache and triggers a refetch', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(fillsFixture, { status: 200 }),
+    );
+    const { result } = renderHook(() => useWalletMetrics(addr, { db }), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.stats).not.toBeNull();
+
+    // Initial fetch made exactly one network call (Dexie was empty).
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    // Refresh triggers a second fetch despite the cache entry being fresh.
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(fillsFixture, { status: 200 }),
+    );
+    await act(async () => {
+      await result.current.refresh();
+    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
   });
 });
