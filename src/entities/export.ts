@@ -5,11 +5,16 @@ import type { FillsCacheEntry } from './fills-cache';
 /**
  * A full exportable snapshot of the Dexie-stored user data. Domain
  * consumers receive this shape (not a Dexie handle) so they stay pure.
+ *
+ * Array (not ReadonlyArray) because Zod's `z.array(...)` infers to the
+ * mutable form and the _schemaCheck in lib/validation/export.ts requires
+ * both sides to match. Readonly intent is enforced by convention: no
+ * code below this file mutates an ExportSnapshot input.
  */
 export type ExportSnapshot = {
-  readonly wallets: ReadonlyArray<Wallet>;
+  readonly wallets: Array<Wallet>;
   readonly userSettings: UserSettings | null;
-  readonly fillsCache: ReadonlyArray<FillsCacheEntry>;
+  readonly fillsCache: Array<FillsCacheEntry>;
 };
 
 /**
@@ -26,11 +31,17 @@ export type BuildExportOptions = {
  * The `data` payload of an ExportFile. `fillsCache` is optional — when
  * the user exports without the "Include cached market data" checkbox,
  * this key is omitted entirely (not `null`, not `[]`).
+ *
+ * The `| undefined` on fillsCache mirrors Zod's `.optional()` output
+ * shape so the _schemaCheck in lib/validation/export.ts stays one-way
+ * assignable under exactOptionalPropertyTypes: true. buildExport still
+ * omits the key when includeCache is false; nothing in this codebase
+ * explicitly writes `fillsCache: undefined`.
  */
 export type ExportData = {
-  readonly wallets: ReadonlyArray<Wallet>;
+  readonly wallets: Array<Wallet>;
   readonly userSettings: UserSettings | null;
-  readonly fillsCache?: ReadonlyArray<FillsCacheEntry>;
+  readonly fillsCache?: Array<FillsCacheEntry> | undefined;
 };
 
 /**
@@ -52,9 +63,9 @@ export type ExportFile = {
  * breakdown the UI shows before committing.
  */
 export type MergeResult = {
-  readonly walletsToUpsert: ReadonlyArray<Wallet>;
+  readonly walletsToUpsert: Array<Wallet>;
   readonly userSettingsToOverwrite: UserSettings | null;
-  readonly fillsCacheToUpsert: ReadonlyArray<FillsCacheEntry>;
+  readonly fillsCacheToUpsert: Array<FillsCacheEntry>;
   readonly summary: {
     readonly walletsAdded: number;
     readonly walletsUpdated: number;
