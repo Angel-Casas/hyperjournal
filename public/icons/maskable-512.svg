@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" fill="#0b0d10" />
+  <!-- Glyph sized to fit within the 80% safe zone (~51x51 centered). Inset
+       by ~6.4px on each side from the 64x64 canvas so Android's adaptive
+       mask (circle, rounded square, squircle) doesn't clip the chart line. -->
+  <path
+    d="M22 42 L26 34 L30 38 L36 26 L42 42"
+    stroke="hsl(152 76% 50%)"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
