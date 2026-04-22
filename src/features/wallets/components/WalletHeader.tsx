@@ -28,6 +28,12 @@ export function WalletHeader({ address, isFetching, onRefresh }: Props) {
           Refresh
         </Button>
         <Link
+          to="/settings"
+          className="rounded-md px-2 py-1 text-sm text-fg-muted underline ring-offset-bg-base hover:text-fg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        >
+          Settings
+        </Link>
+        <Link
           to="/"
           className="rounded-md px-2 py-1 text-sm text-fg-muted underline ring-offset-bg-base hover:text-fg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >

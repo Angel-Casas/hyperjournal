@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AnalyticsPanel } from '@features/analytics';
 import { JournalPanel } from '@features/journal';
 import { WalletPaste, SavedWalletsList, useSavedWallets } from '@features/wallets';
@@ -41,6 +41,14 @@ export function SplitHome() {
         <AnalyticsPanel />
         <JournalPanel />
       </div>
+      <footer className="col-span-full flex justify-end pt-2">
+        <Link
+          to="/settings"
+          className="rounded-md px-2 py-1 text-sm text-fg-muted underline ring-offset-bg-base hover:text-fg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        >
+          Settings
+        </Link>
+      </footer>
     </main>
   );
 }
