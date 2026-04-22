@@ -1,26 +1,12 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Wallet, WalletAddress } from '@entities/wallet';
-import type { RawFill } from '@entities/fill';
+import type { Wallet } from '@entities/wallet';
+import type { FillsCacheEntry } from '@entities/fills-cache';
+import type { UserSettings } from '@entities/user-settings';
 
-/**
- * Snapshot of fills for a wallet, stored under the wallet's address.
- * fetchedAt is the epoch ms when these fills were returned by the API —
- * used by the cache layer to decide when to refetch.
- */
-export type FillsCacheEntry = {
-  readonly address: WalletAddress;
-  readonly fetchedAt: number;
-  readonly fills: ReadonlyArray<RawFill>;
-};
-
-/**
- * Singleton user-settings row. Keyed by the literal string 'singleton' so
- * there is exactly one row.
- */
-export type UserSettings = {
-  readonly key: 'singleton';
-  readonly lastSelectedAddress: string | null;
-};
+// Re-exported for callers that already import from @lib/storage/db.
+// New call sites should prefer @entities/* directly.
+export type { FillsCacheEntry } from '@entities/fills-cache';
+export type { UserSettings } from '@entities/user-settings';
 
 /**
  * Dexie database for HyperJournal. Schema version 1; future sessions add
