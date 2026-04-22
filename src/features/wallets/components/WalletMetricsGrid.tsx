@@ -36,6 +36,11 @@ export function WalletMetricsGrid({ stats }: Props) {
         label="Closed trades"
         value={formatCompactCount(stats.closedCount)}
         provenance={stats.provenance}
+        subtext={
+          stats.breakEvenCount > 0
+            ? `${stats.breakEvenCount} break-even`
+            : undefined
+        }
       />
       <MetricCard
         label="Open trades"
