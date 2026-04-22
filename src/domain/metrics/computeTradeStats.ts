@@ -16,6 +16,7 @@ export function computeTradeStats(
 
   const winners = closed.filter((t) => t.realizedPnl > 0);
   const losers = closed.filter((t) => t.realizedPnl < 0);
+  const breakEvens = closed.filter((t) => t.realizedPnl === 0);
 
   const grossWins = winners.reduce((acc, t) => acc + t.realizedPnl, 0);
   const grossLosses = losers.reduce((acc, t) => acc + t.realizedPnl, 0);
@@ -73,6 +74,7 @@ export function computeTradeStats(
     totalPnl,
     closedCount: closed.length,
     openCount: open.length,
+    breakEvenCount: breakEvens.length,
     winRate,
     expectancy,
     profitFactor,

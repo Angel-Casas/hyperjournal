@@ -19,6 +19,7 @@ export type TradeStats = {
   readonly totalPnl: number;
   readonly closedCount: number;
   readonly openCount: number;
+  readonly breakEvenCount: number;
 
   readonly winRate: number | null;
   readonly expectancy: number | null;

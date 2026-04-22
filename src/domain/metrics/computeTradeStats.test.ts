@@ -53,6 +53,7 @@ describe('computeTradeStats', () => {
     expect(s.bestTrade).toBeNull();
     expect(s.worstTrade).toBeNull();
     expect(s.totalFees).toBe(0);
+    expect(s.breakEvenCount).toBe(0);
     expect(s.provenance).toBe('derived');
   });
 
@@ -237,6 +238,28 @@ describe('computeTradeStats', () => {
     expect(s.longWinRate).toBeCloseTo(1, 9);
     expect(s.avgHoldTimeMs).toBeCloseTo(5000, 9);
     expect(s.totalFees).toBeCloseTo(0.5, 9);
+  });
+
+  it('counts break-even closed trades (realizedPnl === 0) separately from winners and losers', () => {
+    const trades = [
+      makeTrade({ id: 'a', status: 'closed', realizedPnl: 10 }),
+      makeTrade({ id: 'b', status: 'closed', realizedPnl: -5 }),
+      makeTrade({ id: 'c', status: 'closed', realizedPnl: 0 }),
+      makeTrade({ id: 'd', status: 'closed', realizedPnl: 0 }),
+      makeTrade({ id: 'e', status: 'open', realizedPnl: 0 }),
+    ];
+    const s = computeTradeStats(trades);
+    expect(s.breakEvenCount).toBe(2); // closed-and-exactly-zero only
+    // Existing definitions must still exclude break-evens:
+    expect(s.winRate).toBeCloseTo(1 / 4, 9); // 1 winner of 4 closed
+  });
+
+  it('breakEvenCount is zero when no closed trade has realizedPnl === 0', () => {
+    const trades = [
+      makeTrade({ id: 'a', status: 'closed', realizedPnl: 10 }),
+      makeTrade({ id: 'b', status: 'closed', realizedPnl: -5 }),
+    ];
+    expect(computeTradeStats(trades).breakEvenCount).toBe(0);
   });
 
   it('on the real fixture, totalPnl matches the sum of reconstructed realizedPnl', () => {
