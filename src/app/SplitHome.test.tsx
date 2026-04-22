@@ -20,6 +20,6 @@ describe('SplitHome', () => {
     expect(screen.getByRole('heading', { name: /paste a wallet/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /recent wallets/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /trading analytics/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /journal & coaching/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^journal$/i })).toBeInTheDocument();
   });
 });
