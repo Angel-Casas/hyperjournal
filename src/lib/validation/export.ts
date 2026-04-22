@@ -55,7 +55,11 @@ const MoodSchema = z
   .enum(['calm', 'confident', 'anxious', 'greedy', 'regretful'])
   .nullable();
 
-const JournalEntrySchema = z.object({
+const MindsetSchema = z
+  .enum(['focused', 'scattered', 'reactive', 'patient', 'tilted'])
+  .nullable();
+
+const TradeJournalEntrySchema = z.object({
   id: z.string().min(1),
   scope: z.literal('trade'),
   tradeId: z.string().min(1),
@@ -69,6 +73,26 @@ const JournalEntrySchema = z.object({
   stopLossUsed: z.boolean().nullable(),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
+
+const SessionJournalEntrySchema = z.object({
+  id: z.string().min(1),
+  scope: z.literal('session'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+  marketConditions: z.string(),
+  summary: z.string(),
+  whatToRepeat: z.string(),
+  whatToAvoid: z.string(),
+  mindset: MindsetSchema,
+  disciplineScore: z.number().int().min(1).max(5).nullable(),
+  provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
+});
+
+const JournalEntrySchema = z.discriminatedUnion('scope', [
+  TradeJournalEntrySchema,
+  SessionJournalEntrySchema,
+]);
 
 const ExportDataSchema = z.object({
   wallets: z.array(WalletSchema),

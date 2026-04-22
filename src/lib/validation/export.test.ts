@@ -96,7 +96,89 @@ describe('ExportFileSchema', () => {
       },
     });
     expect(out.data.journalEntries).toHaveLength(1);
-    expect(out.data.journalEntries![0]!.mood).toBe('calm');
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade entry');
+    expect(first.mood).toBe('calm');
+  });
+
+  it('parses a file with a session journalEntries row', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 's1',
+            scope: 'session',
+            date: '2026-04-22',
+            createdAt: 1,
+            updatedAt: 1,
+            marketConditions: '',
+            summary: 's',
+            whatToRepeat: '',
+            whatToAvoid: '',
+            mindset: 'focused',
+            disciplineScore: 4,
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    expect(out.data.journalEntries).toHaveLength(1);
+    expect(out.data.journalEntries![0]!.scope).toBe('session');
+  });
+
+  it('rejects a session entry missing the date field', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        ...validFile,
+        data: {
+          ...validFile.data,
+          journalEntries: [
+            {
+              id: 's1',
+              scope: 'session',
+              createdAt: 1,
+              updatedAt: 1,
+              marketConditions: '',
+              summary: '',
+              whatToRepeat: '',
+              whatToAvoid: '',
+              mindset: null,
+              disciplineScore: null,
+              provenance: 'observed',
+            },
+          ],
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a disciplineScore of 6 (out of 1-5 range)', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        ...validFile,
+        data: {
+          ...validFile.data,
+          journalEntries: [
+            {
+              id: 's1',
+              scope: 'session',
+              date: '2026-04-22',
+              createdAt: 1,
+              updatedAt: 1,
+              marketConditions: '',
+              summary: '',
+              whatToRepeat: '',
+              whatToAvoid: '',
+              mindset: null,
+              disciplineScore: 6,
+              provenance: 'observed',
+            },
+          ],
+        },
+      }),
+    ).toThrow();
   });
 
   it('rejects a journalEntries row with an invalid scope', () => {
