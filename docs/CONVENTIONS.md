@@ -145,3 +145,28 @@ Rules in CLAUDE.md §3 rule 10 are invariants; this section is patterns.
 - **Chart a11y** — see §11 "Chart a11y fallback."
 - **Error states** carry both a heading (what went wrong) and an action (how to recover). `WalletView`'s error branch is the reference: `<h2>` with the mapped human copy, followed by a "Try again" button wired to the refresh path.
 - **Verification.** Run Lighthouse → Accessibility audit on affected routes before closing any session that touches UI. Lighthouse uses axe-core under the hood; fix **serious** and **moderate** findings inline, file **minor** findings as BACKLOG.
+
+---
+
+## 13. Export format
+
+- The export file format lives at `src/entities/export.ts` (types) and `src/lib/validation/export.ts` (Zod schema). The two are kept in lockstep via a one-way `_schemaCheck` — changes to either MUST touch both in the same commit, and the schema's output MUST stay assignable to the entity.
+- `app: "HyperJournal"` + `formatVersion: 1` are literal-checked at the envelope level. Foreign files and newer-version files fail fast with specific Zod issues that the Settings UI maps to human copy via `importErrorCopyFor`.
+- `data.fillsCache` is `.optional()` on the Zod schema and omitted entirely (not null, not []) from the file when the user exports without the cache. The entity types the field as `Array<FillsCacheEntry> | undefined` to align with Zod's inferred shape under `exactOptionalPropertyTypes: true`.
+- Additive fields under `data` (e.g., Phase 3's `journalEntries`) do NOT bump `formatVersion` — new optional fields on the envelope are forward-compatible. Breaking changes (renamed field, tightened constraint, removed field) MUST bump.
+- Array fields in the entity are declared as `Array<T>` (not `ReadonlyArray<T>`) because Zod infers mutable arrays and the one-way schema check would otherwise fail. Mutation is still forbidden by convention — domain functions never write to their inputs.
+- `WalletAddressSchema` uses `z.custom<WalletAddress>(predicate)` so the branded type flows through the inferred shape. Predicate runs at parse time; the branded type is just a static assertion.
+- The domain layer (`buildExport`, `mergeImport`) is pure. `exportedAt` is supplied as `options.now` from the caller so tests don't depend on wall-clock time.
+- Import is atomic: `createImportRepo.applyMerge` wraps all three table writes in a single Dexie transaction. Partial writes are not a valid state. Empty arrays and null overwrites are no-ops.
+
+---
+
+## 14. Playwright E2E
+
+- Tests live under `e2e/` in the repo root. `e2e/fixtures/` holds shared helpers (route interceptors, data loaders). File naming: `<topic>.spec.ts`.
+- `playwright.config.ts` points at the dev server (`pnpm dev`, http://localhost:5173) via `webServer`. CI does not yet run Playwright — that's a BACKLOG item. Locally, `reuseExistingServer: true` so an already-running dev server is picked up.
+- Hyperliquid API calls are intercepted via `page.route('**/api.hyperliquid.xyz/info', ...)` using the committed fixture at `tests/fixtures/hyperliquid/user-fills.json`. Never hit the real network in E2E. The shared helper at `e2e/fixtures/hyperliquid-route.ts` is the canonical entry point; it uses `import.meta.url` + `fileURLToPath` so the fixture path resolves under Node's ESM loader.
+- The test wallet in E2E is the anonymized fixture placeholder `0x0000000000000000000000000000000000000001`. The authorized live test wallet stays in controller memory only.
+- E2E is NOT part of the default `pnpm test` gauntlet — run via `pnpm test:e2e` (or `pnpm test:e2e:ui` for the Playwright UI inspector). Manual run before session close.
+- Cross-context state isolation for round-trip tests uses `browser.newContext()` — each context has its own storage (IndexedDB, cookies, localStorage), which is how we test the import-into-empty-browser path.
+- File uploads use `inputElement.setInputFiles(path)` where `path` can be a captured download path from `page.waitForEvent('download')` + `download.path()`. This is how the export/import round-trip chains.

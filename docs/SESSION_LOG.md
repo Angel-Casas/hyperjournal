@@ -343,3 +343,60 @@ Every session **must** add an entry before closing. The goal is that a future se
 - No new runtime dependencies this session. SVG icons avoid rasterization toolchains entirely; the `sharp` devDep considered in the plan draft was rejected.
 
 ---
+
+## 2026-04-22 — Phase 1 Session 6: Export/Import + Playwright E2E
+
+**Session goal:** Close plan §24 #6 (export and re-import local data). Add /settings route with export (optional cache include) + import (merge-by-upsert). First Playwright E2E covering paste smoke + export/import round-trip.
+
+**Done:**
+
+- Promoted `UserSettings` and `FillsCacheEntry` to `src/entities/` (prerequisite — domain→lib boundary forbids domain code importing types from lib/storage). `@lib/storage/db` re-exports for existing callers.
+- `src/entities/export.ts`: `ExportSnapshot`, `ExportFile`, `ExportData`, `BuildExportOptions`, `MergeResult`. formatVersion 1; app-identity "HyperJournal"; data envelope is extensible (journaling slots in without a version bump). Array (not ReadonlyArray) used throughout so the `_schemaCheck` in validation stays assignable.
+- `src/lib/validation/export.ts`: `ExportFileSchema` + `parseExport`. Literal-checks on `app` and `formatVersion`; `z.custom<WalletAddress>(...)` preserves the branded type through the inferred shape. One-way `_schemaCheck` (schema fits entity) documented as the right trade-off given exactOptionalPropertyTypes + branded fields. [+9 tests]
+- `src/domain/export/buildExport.ts`: pure, deterministic, clock-injected. Omits `fillsCache` key entirely when `includeCache === false`. [+7 tests]
+- `src/domain/export/mergeImport.ts`: pure, computes MergeResult + summary. Fixed upsert strategy for v1 (wallets by address with incoming wins, userSettings overwrite on non-null, fillsCache by address when present). [+7 tests]
+- `src/lib/storage/export-repo.ts`: `readSnapshot()` reads all three tables in a single Promise.all. [+4 tests]
+- `src/lib/storage/import-repo.ts`: `applyMerge()` writes inside a single Dexie transaction across all three tables. Only writes non-empty arrays / non-null singletons so empty merges are no-ops. [+5 tests]
+- `src/app/settings/import-errors.ts`: maps SyntaxError / ZodError(app) / ZodError(formatVersion>1) / other ZodError / unknown to human copy. [+5 tests]
+- `/settings` route mounted in `src/app/routes.tsx`. `Settings.tsx` shell with a Back link and a Data section landmark. [+3 tests] Nav links: one in WalletHeader (between Refresh and Back); one footer-right on SplitHome. Both use the CONVENTIONS §12 focus-visible class string.
+- `ExportPanel.tsx`: `Include cached market data` checkbox (default off) + `Export data` button. Builds the file via `buildExport`, wraps in Blob, triggers `<a download>`, revokes the URL on next tick. Filename `hyperjournal-export-YYYY-MM-DD.json` (UTC). [+4 tests; Blob content coverage lives in buildExport unit tests because jsdom's Blob round-trip is broken]
+- `ImportPanel.tsx`: file input → `FileReader` (jsdom-compatible; `File.prototype.text` is unimplemented there) → Zod validate → merge → dry-run summary with "Confirm import" / "Cancel" → commit or idle. Error states render loss-tone heading + "Choose a different file". State machine via discriminated union (idle / staged / committing / done / error). [+6 tests]
+- Playwright toolchain: `@playwright/test@1.47.2` devDep + chromium binary; `playwright.config.ts` wires dev-server webServer; `e2e/` dir with `fixtures/hyperliquid-route.ts` helper; `.gitignore` now also excludes `playwright/.cache/`.
+- E2E test 1 (`e2e/paste-flow.spec.ts`): paste wallet → /w/:address → all five sections render; Refresh triggers a second HL fetch. [+2 E2E tests]
+- E2E test 2 (`e2e/export-import.spec.ts`): seed, export, capture download, fresh browser context, import, confirm, verify wallet reappears on /. [+1 E2E test]
+- End state: **223 unit tests across 34 files** (was 173/25 after Session 5; +50 this session), **3 Playwright E2E tests** passing. Unit gauntlet clean; E2E runs via `pnpm test:e2e`.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Selective import (partial per-row/table) — BACKLOG. Fixed-upsert is sufficient for v1.
+- Encryption — BACKLOG. Becomes relevant when API keys enter the format (Phase 4).
+- Cloud sync — BACKLOG; probably deprecated entirely given local-first premise.
+- Migration for formatVersion > 1 — BACKLOG. Design when v2 actually lands.
+- CI gate on Playwright — BACKLOG. Manual runs for now.
+- Switch webServer to `pnpm preview` if dev-server proves flaky — BACKLOG.
+- Journaling — Session 7+.
+
+**Gotchas for next session:**
+
+- `src/entities/user-settings.ts` and `src/entities/fills-cache.ts` are the new canonical locations. `@lib/storage/db` still re-exports for back-compat; new code should import from `@entities/*`.
+- `ExportFile.data.fillsCache` is `.optional()` with `| undefined` so the Zod output assigns to the entity under exactOptionalPropertyTypes. `buildExport` still omits the key when `includeCache: false`; nothing explicitly writes `fillsCache: undefined`.
+- `mergeImport` with `userSettings: null` is a no-op, not a delete. Phase 3's explicit-delete path (if any) needs a new strategy flag.
+- `ImportPanel` reads files via a local `readFileAsText(file)` helper wrapping FileReader. Do not replace with `file.text()` — jsdom doesn't implement it, and the Playwright E2E needs the same code path to work in production browsers.
+- `ExportPanel` tests define `URL.createObjectURL`/`revokeObjectURL` via `Object.defineProperty` in a `beforeAll` (jsdom omits them entirely). If a future Session adds more Blob-download UI, factor this into `src/tests/setup.ts` rather than duplicating.
+- Blob content round-trip in jsdom is broken (`new Response(blob).text()` returns "[object Blob]"; `blob.text()` is missing). Component tests assert on the Blob instance + MIME type; pure-domain tests cover content.
+- Downloaded Blob URLs are revoked on `setTimeout(…, 0)` — short enough to be safe, fast enough to not leak.
+- The `_schemaCheck` in `lib/validation/export.ts` is ONE-way (schema fits entity). Mutual-assignability fails because Zod's `.optional()` produces `| undefined` (under exactOptionalPropertyTypes) and `z.array(...)` is mutable. The one-way check still catches "entity field has no schema counterpart" regressions.
+- Playwright tests use `http://localhost:5173`. The config's `reuseExistingServer: true` picks up a running `pnpm dev`; CI starts fresh. CI does NOT yet run E2E — adding that is a BACKLOG item.
+- `e2e/fixtures/hyperliquid-route.ts` uses `import.meta.url` + `fileURLToPath` to resolve the fixture path; Playwright runs with Node's ESM loader. New E2E tests should import the helper rather than re-implementing.
+
+**Invariants assumed:**
+
+- `formatVersion: 1` is the contract. Additive fields under `data` are allowed without a bump (schema permissive via optional + default); breaking changes MUST bump.
+- `app: "HyperJournal"` literal rejects foreign files loudly before the expensive Zod check on `data`.
+- Dexie writes on import happen inside ONE transaction across all three tables so partial-write states are impossible.
+- `buildExport` and `mergeImport` never mutate their inputs. They are pure per `src/domain/**` conventions.
+- The one-way `_schemaCheck` at the bottom of `@lib/validation/export.ts` breaks typecheck if the entity adds a field without the schema learning about it. Changes to `ExportFile` MUST update both in the same commit.
+
+---

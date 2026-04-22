@@ -116,3 +116,16 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[soon]` Persisted TanStack Query `initialData` for `useUserFills`. Two viable approaches: (a) synchronous Dexie cache read returning `placeholderData` (no new dep, but Dexie is async, so this needs an IndexedDB-direct synchronous shim — not idiomatic and arguably fragile); (b) `@tanstack/react-query-persist-client` + `@tanstack/query-async-storage-persister` (~3 KB, idiomatic, two new deps → requires an ADR). The "Loading fills…" flash on refresh is minor but real. ADR required before picking.
 - `[later]` Real designed PWA icons. Session 5 ships SVG placeholders for icon-{192,512} and maskable-{192,512}. Phase 5 polish should replace them with designed iconography. Also add PNG fallbacks for iOS older versions that don't render SVG apple-touch-icon.
 - `[maybe]` Consider using `role="grid"` instead of `role="table"` on `TradeHistoryList` if keyboard-grid navigation (arrow-key between cells, Home/End, PageUp/PageDown) becomes a feature. For now `role="table"` is correct since the list is read-only and not cell-navigable.
+
+---
+
+## Session 6 deferrals
+
+- `[maybe]` Selective import. UI for per-row or per-table selection at import time (checkboxes next to the dry-run summary). Fixed-upsert covers the common case (restore into empty browser); selective becomes useful when merging two partial exports.
+- `[soon]` Encryption-at-rest for exports. AES-GCM with a user-supplied passphrase. Required once API keys enter the format (Phase 4); until then, nothing in the export is secret.
+- `[later]` Cloud sync. Post-v1; would need a server, which contradicts the local-first premise. Probably deprecated as an option entirely.
+- `[maybe]` Migration path for `formatVersion > 1`. Design when v2 is actually proposed, not preemptively. Today a newer-version file is rejected loudly.
+- `[soon]` CI gate on Playwright. `.github/workflows/deploy.yml` should run `test:e2e` before deploying. Requires (a) stable local test run (achieved), (b) decision on chromium install in CI (cache the binary or install every run), (c) whether `fullyParallel: true` + `workers: 1` in CI is the right throttle.
+- `[maybe]` Switch Playwright `webServer` to `pnpm preview` if the dev-server proves flaky. Preview matches production output (minified, service worker) but boots slower.
+- `[maybe]` Export-file compression (gzip). A full fillsCache export for an active wallet is ~500 KB → ~100 KB gzipped. `CompressionStream` is available in all target browsers. Trivial win if users start exporting cache regularly.
+- `[maybe]` Factor the jsdom Blob/URL stubs from `ExportPanel.test.tsx` into `src/tests/setup.ts` if another component grows a Blob-download UI.
