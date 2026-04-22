@@ -465,3 +465,54 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Boundaries rule: `features/wallets` → `features/journal` is FORBIDDEN. `app/*` composing both is the only allowed path.
 
 ---
+
+## 2026-04-22 — Phase 1 Session 7b: Session/day journal
+
+**Session goal:** Extend journaling to the session/day scope. One entry per UTC date, wallet-agnostic. New /d/:date route. JournalPanel becomes real.
+
+**Done:**
+
+- `src/entities/journal-entry.ts`: extended to discriminated union. `TradeJournalEntry` (7a shape, unchanged semantics) + `SessionJournalEntry` (scope='session', date YYYY-MM-DD UTC, six trader-level fields: marketConditions / summary / whatToRepeat / whatToAvoid / mindset enum / disciplineScore 1-5). New `Mindset` type.
+- Dexie schema v3 (additive): new `date` index on the existing `journalEntries` table. No `.upgrade()` — rows keep their `scope: 'trade'` and match the trade variant cleanly.
+- `isValidDateString` + `todayUtcDateString` pure helpers in `src/domain/dates/`. Branded `YYYYMMDD` type narrows at the boundary. [+7 tests]
+- Repo extensions: `findByDate`, `listSessionEntries`. `findByTradeId` narrows to `TradeJournalEntry | null`; `listAllTradeIds` filters by scope='trade'. [+5 tests]
+- `useSessionJournalEntry(date)` hook — parallel to useTradeJournalEntry, keyed on date. Invalidates both the per-date query and `['journal', 'recent-sessions']`. [+3 tests]
+- `useRecentSessionEntries({ limit })` hook — for the JournalPanel listing. [+2 tests]
+- `SessionJournalForm` — six fields with autosave-on-blur, draftRef, hydration guard, isDraftEmpty short-circuit, form-level status + "Saved at HH:MM" chip. Inline 6-radio disciplineScore group. [+6 tests]
+- `/d/:date` route with `DayDetail.tsx` — header with long-form UTC date + Settings + Back links, SessionJournalForm below. Invalid or impossible dates redirect to /. [+3 tests]
+- `JournalPanel` rewrite — "Today's journal" CTA linking to /d/<today-UTC>, list of up to 7 recent session entries (each linking to /d/:date), empty state, injectable `now` for deterministic tests. Replaces the Session 1 stub. [+4 tests]
+- Zod `JournalEntrySchema` → `z.discriminatedUnion('scope', [TradeJournalEntrySchema, SessionJournalEntrySchema])`. MindsetSchema enum added. disciplineScore bounded `1..5 | null`. [+3 validation cases]
+- Playwright: `e2e/session-journal-roundtrip.spec.ts` — two tests covering type→blur→reload persistence and JournalPanel listing-after-save. [+2 E2E tests]
+- End state: **289 unit tests across 47 files** (was 256/40 after Session 7a; +33 this session), **7 E2E tests** passing. Gauntlet clean.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Strategy/setup journal scope + tags — Session 7c.
+- Screenshots/images — Session 7d.
+- Calendar-cell click → day detail navigation — BACKLOG.
+- Cross-wallet PnL summary on DayDetail — BACKLOG (needs "which wallets" design).
+- Per-wallet session entries — BACKLOG (additive via `walletAddress?` field).
+- Multi-entry per date — BACKLOG.
+
+**Gotchas for next session:**
+
+- `JournalEntry` is a discriminated union. Anywhere code accesses variant-specific fields (tradeId, date, preTradeThesis, mindset, etc.), narrow on `scope` first or use the narrowed return types from the repo (findByTradeId → TradeJournalEntry, findByDate → SessionJournalEntry).
+- `listAllTradeIds` uses `where('scope').equals('trade')` — make sure Session 7c's strategy scope doesn't accidentally leak into this set.
+- `listSessionEntries` does its own in-memory sort because Dexie's `.where('scope').equals('session').reverse()` plus `.sortBy('updatedAt')` is awkward to compose with the scope filter. Fine for Phase 1 data volumes.
+- The `/d/:date` route is wallet-agnostic. Sessions 7c+ adding a strategy scope should either sit under `/s/:strategy` or be hosted within a Strategies page — do not nest it under `/w/:address`.
+- `JournalPanel.now` prop is for tests only. Production passes `undefined` and the component uses `Date.now()` at render. Midnight UTC rollover while the tab is open shifts "today" on next render.
+- `SessionJournalForm` and `TradeJournalForm` share the autosave-on-blur pattern but don't share implementation. Extracting a shared hook is BACKLOG polish; don't do it until a third scope (strategy) forces the extraction.
+- Dexie's `InsertType<JournalEntry, 'id'>` collapses the union's variant fields — inline literal `put({...})` calls inside tests need to be hoisted to a typed variable (e.g., `const entry: TradeJournalEntry = {...}; await db.journalEntries.put(entry)`).
+- Dexie v3 is a one-way bump; v2 → v3 upgrades silently on first open.
+
+**Invariants assumed:**
+
+- One session entry per date (scope='session'). Multi-entry is not supported in Session 7b.
+- Session entry IDs are UUID v4 from `crypto.randomUUID()`, stable across reloads because the mutation reuses `hook.entry.id`.
+- Dates in the entity + schema + routes are UTC-anchored YYYY-MM-DD strings. Local-timezone mode is a separate BACKLOG item.
+- `TradeJournalEntry` shape is bit-for-bit identical to 7a's `JournalEntry` shape — pre-existing Dexie rows match without migration.
+- The `_schemaCheck` in lib/validation/export.ts still holds one-way: the Zod discriminated union's inferred shape is assignable to the entity union.
+
+---

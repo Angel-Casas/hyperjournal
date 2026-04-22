@@ -145,3 +145,18 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` Multi-entry per trade. Some journaling workflows treat notes as a log ("entry at 9:01 AM", "entry at 11:15 AM"). Extend from `findByTradeId` returning one entry to returning an array. Not useful until multiple users ask.
 - `[maybe]` Unsaved-changes warning on navigation. `useBlocker` or `beforeunload` handler when the form status is `dirty`. Current behavior: blur-on-click-of-Link often doesn't fire before navigation, so the in-progress field's edit is lost.
 - `[maybe]` Multi-tab editing conflict resolution. Two tabs open on the same trade-detail page would silently overwrite each other on save. A last-writer-wins broadcast channel or just a warning.
+
+---
+
+## Session 7b deferrals
+
+- `[next]` Strategy/setup journal scope + tags — Session 7c. Extends JournalEntry discriminator to `'strategy'`. Introduces the cross-cutting tags concept for linking trades/sessions to strategy names.
+- `[next]` Screenshots/images — Session 7d. IndexedDB blob storage + thumbnail generation + quota handling.
+- `[maybe]` Calendar-cell click navigates to /d/:date. ECharts custom click event on a calendar cell, mapping the cell's data to YYYY-MM-DD, navigating to the route. Narrow work but fiddly wiring.
+- `[maybe]` Cross-wallet PnL summary on the DayDetail page. Requires a "which wallets" design — all saved wallets? Most-recent viewed? An explicit picker? Out of scope until Phase 2 filter panel is clearer.
+- `[maybe]` Per-wallet session entries. Optional `walletAddress: string | null` field on SessionJournalEntry. Additive; only ship if users report wanting per-wallet day reflections.
+- `[maybe]` Multi-entry per date. Morning-session + afternoon-session journaling. Extend `findByDate` to return an array; update the SessionJournalForm into a list + "New entry" CTA.
+- `[maybe]` Full-history listing for session entries. JournalPanel shows last 7; a dedicated /journal/history route could show all with filters.
+- `[maybe]` JournalPanel filtering by mindset / date range / has-content. Small but useful once users have tens of entries.
+- `[maybe]` Local-timezone mode for session date keys. Today UTC is used across the app (calendar, session journal, export). A single toggle + corresponding `todayLocalDateString` helper would flip it.
+- `[maybe]` Shared autosave-on-blur hook. TradeJournalForm and SessionJournalForm implement the same pattern independently. Extract when Session 7c adds a third form — three is the trigger for DRY.
