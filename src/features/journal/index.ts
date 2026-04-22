@@ -1,5 +1,6 @@
 export { JournalPanel } from './components/JournalPanel';
 export { TradeJournalForm } from './components/TradeJournalForm';
+export { SessionJournalForm } from './components/SessionJournalForm';
 export { TriStateRadio } from './components/TriStateRadio';
 export { useTradeJournalEntry } from './hooks/useTradeJournalEntry';
 export { useJournalEntryIds } from './hooks/useJournalEntryIds';
