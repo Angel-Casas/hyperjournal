@@ -14,7 +14,9 @@ const mocks = vi.hoisted(() => {
   return { setOption, init };
 });
 
-vi.mock('echarts', () => ({ init: mocks.init }));
+vi.mock('@lib/charts/echarts-setup', () => ({
+  echarts: { init: mocks.init },
+}));
 
 import { PnlCalendarChart } from './PnlCalendarChart';
 import type { ReconstructedTrade } from '@entities/trade';

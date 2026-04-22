@@ -1908,6 +1908,6 @@ Expected: working tree clean; Session 5 commits land in sequence.
 
 To be filled in by Task 1 and Task 13:
 
-- **Baseline (Session 4b end):** dist total `[TODO bytes]`, gzipped JS `[TODO bytes]`.
-- **Post-trim (Session 5 end):** dist total `[TODO bytes]`, gzipped JS `[TODO bytes]`.
-- **Gzipped delta:** `[TODO bytes]` saved.
+- **Baseline (Session 4b end):** dist total `1,556,480` bytes, gzipped JS `492,176` bytes. Vite reports main chunk at `1,493.51 kB raw / 487.14 kB gzipped`. Precache total `1,474.20 KiB`.
+- **Post-trim (Session 5 end):** dist total `1,056,768` bytes, gzipped JS `324,387` bytes. Precache total `974.02 KiB`.
+- **Gzipped JS delta:** `167,789 bytes` saved (~164 KiB, ~34%). Precache raw delta ~500 KiB (~34%). Short of the 400 KB gzipped target quoted in the spec, but a substantive cut.

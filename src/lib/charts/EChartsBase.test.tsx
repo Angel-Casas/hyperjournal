@@ -14,8 +14,10 @@ const mocks = vi.hoisted(() => {
   return { setOption, resize, dispose, on, off, init };
 });
 
-vi.mock('echarts', () => ({
-  init: mocks.init,
+vi.mock('@lib/charts/echarts-setup', () => ({
+  echarts: {
+    init: mocks.init,
+  },
 }));
 
 import { EChartsBase } from './EChartsBase';

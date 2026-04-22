@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import * as echarts from 'echarts';
-import type { EChartsOption, ECharts } from 'echarts';
+import { echarts } from '@lib/charts/echarts-setup';
+import type { EChartsType } from 'echarts/core';
+import type { EChartsOption } from 'echarts';
 
 type Props = {
   option: EChartsOption;
@@ -20,7 +21,7 @@ type Props = {
  */
 export function EChartsBase({ option, className, style, onEvents }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const instanceRef = useRef<ECharts | null>(null);
+  const instanceRef = useRef<EChartsType | null>(null);
 
   // Init + dispose
   useEffect(() => {
