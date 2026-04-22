@@ -129,3 +129,19 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` Switch Playwright `webServer` to `pnpm preview` if the dev-server proves flaky. Preview matches production output (minified, service worker) but boots slower.
 - `[maybe]` Export-file compression (gzip). A full fillsCache export for an active wallet is ~500 KB → ~100 KB gzipped. `CompressionStream` is available in all target browsers. Trivial win if users start exporting cache regularly.
 - `[maybe]` Factor the jsdom Blob/URL stubs from `ExportPanel.test.tsx` into `src/tests/setup.ts` if another component grows a Blob-download UI.
+
+---
+
+## Session 7a deferrals
+
+- `[next]` Session/day journal scope — Session 7b. Extends `JournalEntry.scope` to include `'session'`. Keyed by date (YYYY-MM-DD) rather than tradeId. Fields per plan §11.8 Section B: market conditions, mindset, discipline score, mistakes, summary, what to repeat, what to avoid.
+- `[next]` Strategy/setup journal scope + tags — Session 7c. Extends `JournalEntry.scope` to include `'strategy'`. Introduces a cross-cutting `tags` concept for linking trades to strategy names.
+- `[next]` Screenshots/images for journal entries — Session 7d. Its own design: IndexedDB blob storage, thumbnail generation, quota handling. Fields per plan §11.8.
+- `[maybe]` Edit history / versioning of journal entries. An append-only `journalEntryVersions` table keyed by `(entryId, updatedAt)` — every save creates a version row. "View history" drawer on the detail page.
+- `[maybe]` Filter trade history by "has notes" / "no notes". Ties into the Phase 2 filter panel; low value before that lands.
+- `[maybe]` Selective import of journal entries. Per-entry checkboxes in the ImportPanel dry-run summary. Useful for merging two partial exports without pulling in unwanted entries.
+- `[later]` NanoGPT prompt generation from journal entries — Phase 4. Journal content is rich prompt material for AI review summaries.
+- `[maybe]` Per-field save status on `TradeJournalForm`. Current form-level status may feel too coarse when the user has typed in multiple fields and only one save fails. Revisit if users report confusion.
+- `[maybe]` Multi-entry per trade. Some journaling workflows treat notes as a log ("entry at 9:01 AM", "entry at 11:15 AM"). Extend from `findByTradeId` returning one entry to returning an array. Not useful until multiple users ask.
+- `[maybe]` Unsaved-changes warning on navigation. `useBlocker` or `beforeunload` handler when the form status is `dirty`. Current behavior: blur-on-click-of-Link often doesn't fire before navigation, so the in-progress field's edit is lost.
+- `[maybe]` Multi-tab editing conflict resolution. Two tabs open on the same trade-detail page would silently overwrite each other on save. A last-writer-wins broadcast channel or just a warning.

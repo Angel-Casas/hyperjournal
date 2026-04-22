@@ -400,3 +400,68 @@ Every session **must** add an entry before closing. The goal is that a future se
 - The one-way `_schemaCheck` at the bottom of `@lib/validation/export.ts` breaks typecheck if the entity adds a field without the schema learning about it. Changes to `ExportFile` MUST update both in the same commit.
 
 ---
+
+## 2026-04-22 — Phase 1 Session 7a: Trade journal foundation
+
+**Session goal:** Ship the first journaling surface. Trade-scoped entries stored locally in Dexie v2, edited on /w/:address/t/:tradeId with autosave-on-blur. Pencil icon marks trades with notes. Export/import extended to carry journal data.
+
+**Done:**
+
+- `src/entities/journal-entry.ts`: `JournalEntry` type + `Mood` enum (calm / confident / anxious / greedy / regretful; null = unset). Tri-state booleans for `planFollowed` and `stopLossUsed` (null = unanswered as a first-class value).
+- Dexie schema v2 (additive): new `journalEntries` table keyed by `id`, indexed on `tradeId`, `scope`, `updatedAt`. No data migration needed; the v1 stores declaration stays in place.
+- `src/lib/storage/journal-entries-repo.ts`: CRUD + `listAllTradeIds` for the trade-history pencil icon. [+6 integration tests]
+- TanStack Query hooks in `src/features/journal/hooks/`:
+  - `useTradeJournalEntry(tradeId)` — read/save/remove. Mutations invalidate both `['journal', 'trade', tradeId]` and `['journal', 'trade-ids']` so the history pencil updates immediately. [+4 tests]
+  - `useJournalEntryIds()` — returns `Set<tradeId>` for the pencil icon. [+2 tests]
+- `TriStateRadio` — reusable 3-option radio group (Yes / No / Unanswered). [+5 tests]
+- `TradeJournalForm` — six fields (three textareas + mood select + two TriStateRadio groups). Autosave-on-blur with form-level status machine (clean / dirty / saving / saved / error) and "Saved at HH:MM" chip. `isDraftEmpty` skips writes when the form is entirely default, so users navigating through trades without typing never create dead rows. Two React subtleties handled: draftRef mirrors state so onBlurCommit reads the latest value when change/blur fire in the same tick; the hydration effect guards against overwriting user-typed content when the initial query resolves null. [+6 tests]
+- `/w/:address/t/:tradeId` route with `TradeDetail.tsx` page — coin + side + status badges in the header, 8-cell trade summary grid (opened/closed dates, avgEntry/Exit, size, realized PnL, fees, hold time), journal form below. Invalid tradeId / address redirects. [+2 tests]
+- `TradeHistoryList` — rows became `<Link>`s (role="row" on <a> is valid ARIA), preserving the existing rowgroup/columnheader/cell chain. Pencil icon renders inline with the coin cell when `tradeIdsWithNotes.has(tradeId)`. `aria-label="Has journal notes"` for screen readers. Boundaries rule (`features/wallets` can't import `features/journal`) resolved by lifting `useJournalEntryIds` up to `WalletView` in `src/app/` and threading the Set through a new `tradeIdsWithNotes` prop. [+1 test on top of existing 5]
+- Export/import extension (additive per CONVENTIONS §13):
+  - `ExportData.journalEntries?: Array<JournalEntry> | undefined`
+  - `MergeResult.summary.journalEntriesImported: number`
+  - `ExportSnapshot.journalEntries: Array<JournalEntry>`
+  - `buildExport` includes `journalEntries` in both includeCache branches (journals aren't regenerable like fillsCache; they always travel with the export).
+  - `mergeImport` passes entries through with upsert-by-id semantics.
+  - `createImportRepo.applyMerge` writes inside the existing Dexie transaction — all four tables now atomic.
+  - `ImportPanel` summary copy extends with "N journal entries".
+  - [+7 unit-test cases across 5 test files]
+- Playwright: `e2e/journal-roundtrip.spec.ts` — two tests covering type→blur→reload persistence and pencil-icon-after-save. [+2 E2E tests]
+- End state: **256 unit tests across 40 files** (was 223/34 after Session 6; +33 this session), **5 E2E tests** passing. Gauntlet clean.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Session/day journal scope — Session 7b.
+- Strategy/setup journal scope + tags — Session 7c.
+- Screenshots/images — Session 7d (own brief: IndexedDB blob storage, thumbnailing, quota).
+- Edit history / versioning of journal entries — BACKLOG.
+- Filter trade history by "has notes" / "no notes" — BACKLOG (tied to Phase 2 filter panel).
+- Selective import of journal entries — BACKLOG.
+- NanoGPT prompt generation from journal entries — Phase 4.
+- Per-field save status if form-level proves too coarse — BACKLOG.
+- Body-row unit tests (row-is-link, pencil-icon-visible) — @tanstack/react-virtual returns empty virtualItems in jsdom because scroll geometry is zero. Covered by Playwright round-trip instead.
+
+**Gotchas for next session:**
+
+- `JournalEntry.scope` is the discriminator for 7b/7c. When adding 'session' and 'strategy' scopes, update `MoodSchema` / `scope` literal in the Zod schema (currently `z.literal('trade')`; extend to enum) and add scope-aware queries to the repo.
+- `TradeHistoryList` rows are now `<Link>` elements. `role="row"` on an anchor is valid ARIA; keep that in mind if the virtualizer gets refactored.
+- `features/wallets` cannot import `features/journal` (boundaries rule). Anywhere a wallets-feature component needs journal data, thread it down via a prop from `src/app/*`. `WalletView` is the canonical pattern — it consumes both features and passes the intersection down.
+- `useJournalEntryIds` invalidates on every save/remove. Cheap for Phase 1 data volumes (read-all-and-dedupe); revisit if entries hit the thousands.
+- `ExportData.journalEntries` is always present in exports (empty array when the wallet has no journals). Only `fillsCache` is gated by the includeCache toggle. Phase 3+ journal scopes will ship in the same array keyed by `scope`.
+- `TradeJournalForm` uses `draftRef` to avoid the stale-closure on change→blur in the same tick. Don't "simplify" this away — the test suite depends on it.
+- The empty-form-blur check (`isDraftEmpty && !hook.entry`) is load-bearing for "no dead rows." If a new field is added, extend `isDraftEmpty` to match.
+- The form's hydration effect only copies entry → draft when the entry is non-null. An initial null result does not overwrite user-typed content. Keep this branch.
+- Dexie schema v2 is a hard cutover — browsers that opened v1 upgrade on next open. Downgrade is NOT supported.
+
+**Invariants assumed:**
+
+- One journal entry per trade (scope='trade'). Multi-entry per trade is not supported in Session 7a.
+- Entry IDs are UUID v4 generated at first save via `crypto.randomUUID()`. Stable across reloads because the mutation reuses `hook.entry.id` once an entry exists.
+- `createdAt` is set once at first save; `updatedAt` advances on every subsequent save. Both are Unix ms.
+- `provenance` is always `'observed'` for user-authored entries. Future AI-generated journal content would carry `'inferred'`.
+- Dexie upgrade path: v1 → v2 is a one-way bump. No downgrade, no "rollback to v1" story.
+- Boundaries rule: `features/wallets` → `features/journal` is FORBIDDEN. `app/*` composing both is the only allowed path.
+
+---

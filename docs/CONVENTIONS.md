@@ -170,3 +170,19 @@ Rules in CLAUDE.md §3 rule 10 are invariants; this section is patterns.
 - E2E is NOT part of the default `pnpm test` gauntlet — run via `pnpm test:e2e` (or `pnpm test:e2e:ui` for the Playwright UI inspector). Manual run before session close.
 - Cross-context state isolation for round-trip tests uses `browser.newContext()` — each context has its own storage (IndexedDB, cookies, localStorage), which is how we test the import-into-empty-browser path.
 - File uploads use `inputElement.setInputFiles(path)` where `path` can be a captured download path from `page.waitForEvent('download')` + `download.path()`. This is how the export/import round-trip chains.
+
+---
+
+## 15. Journaling
+
+- **Scope discriminator.** `JournalEntry.scope` is the discriminator string on every entry. Session 7a uses only `'trade'`; 7b/7c extend the enum to `'session'` and `'strategy'`. Queries that target a specific scope MUST filter on the indexed `scope` field.
+- **One-entry-per-trade.** For the `'trade'` scope, there is exactly one entry per tradeId. Saves overwrite by `id` (not append). Multi-entry is a BACKLOG item.
+- **Autosave on blur.** Journal forms persist the draft to Dexie on every field's `onBlur` — no Save button. `isDraftEmpty` short-circuits writes when nothing has been typed, so navigating through trades without journaling never creates dead rows. Status machine on the form: `clean | dirty | saving | saved | error`. "Saved at HH:MM" chip communicates when the work is safe.
+- **Draft-ref pattern.** Forms that autosave-on-blur in the same synchronous tick as the preceding change must mirror their draft state in a `useRef` so the blur handler reads the latest value. `setState` is batched; the blur handler otherwise sees the pre-change state. `TradeJournalForm` is the reference implementation.
+- **Hydrate once, safely.** The one-time "copy query result into draft" effect must only run when the query resolves a non-null entry. If the result is null and the user has typed during the initial load, the effect would otherwise clobber their input. `TradeJournalForm` demonstrates the guard.
+- **Tri-state booleans.** `planFollowed` and `stopLossUsed` are `boolean | null` — null means "unanswered" and is a first-class value. Forcing a yes/no up front pushes users toward whichever answer is less emotionally loaded.
+- **Mood enum, not free text.** Mood is a five-value enum (`calm | confident | anxious | greedy | regretful`) plus null. Pattern detection and Phase 4 AI integration depend on a stable vocabulary; free-text moods would be unqueryable.
+- **Entry IDs.** UUID v4 via `crypto.randomUUID()`, generated at first save. Native browser API — no runtime dependency.
+- **Additive schema bumps.** New Dexie tables are added via `this.version(N).stores({...})` with the previous version's declaration kept in place. No `.upgrade()` callback is needed unless existing rows need transforming.
+- **Journaling export.** Journal entries always travel with exports (unlike `fillsCache`, which is user-regenerable and gated by the `includeCache` toggle). Journals are user-authored and small.
+- **Trade-history pencil icon.** Wallet-feature components cannot import `features/journal` (boundaries rule). The `TradeHistoryList` accepts a `tradeIdsWithNotes: ReadonlySet<string>` prop; the composing route (`src/app/WalletView.tsx`) calls `useJournalEntryIds()` and threads the set down. Mutations on journal entries invalidate this query so the pencil icon updates immediately.
