@@ -5,6 +5,7 @@ import { Settings } from './Settings';
 import { TradeDetail } from './TradeDetail';
 import { DayDetail } from './DayDetail';
 import { Strategies } from './Strategies';
+import { StrategyDetail } from './StrategyDetail';
 
 const router = createBrowserRouter(
   [
@@ -13,6 +14,7 @@ const router = createBrowserRouter(
     { path: '/w/:address/t/:tradeId', element: <TradeDetail /> },
     { path: '/d/:date', element: <DayDetail /> },
     { path: '/strategies', element: <Strategies /> },
+    { path: '/s/:id', element: <StrategyDetail /> },
     { path: '/settings', element: <Settings /> },
   ],
   {
