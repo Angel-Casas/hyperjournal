@@ -68,4 +68,10 @@ describe('JournalPanel', () => {
     const link = screen.getByRole('link', { name: /short teaser/i });
     expect(link).toHaveAttribute('href', '/d/2026-04-20');
   });
+
+  it('renders a "Strategies →" link to /strategies', () => {
+    renderPanel();
+    const link = screen.getByRole('link', { name: /strategies/i });
+    expect(link).toHaveAttribute('href', '/strategies');
+  });
 });

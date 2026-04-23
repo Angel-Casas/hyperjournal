@@ -20,15 +20,23 @@ export function JournalPanel({ db, now }: Props) {
       aria-labelledby="journal-panel-heading"
       className="flex h-full flex-col gap-4 rounded-lg border border-border bg-bg-raised p-6"
     >
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="journal-panel-heading" className="text-lg font-semibold text-fg-base">
           Journal
         </h2>
-        <Link to={`/d/${today}`}>
-          <Button variant="default" size="sm">
-            + Today's journal
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to={`/d/${today}`}>
+            <Button variant="default" size="sm">
+              + Today's journal
+            </Button>
+          </Link>
+          <Link
+            to="/strategies"
+            className="rounded-md px-2 py-1 text-sm text-fg-muted underline ring-offset-bg-base hover:text-fg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            Strategies →
+          </Link>
+        </div>
       </header>
 
       {isLoading ? (
