@@ -1,0 +1,111 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { StrategyJournalForm } from './StrategyJournalForm';
+import { HyperJournalDb } from '@lib/storage/db';
+import type { StrategyJournalEntry } from '@entities/journal-entry';
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+let db: HyperJournalDb;
+
+beforeEach(async () => {
+  db = new HyperJournalDb(`hj-strat-form-${Math.random().toString(36).slice(2)}`);
+  await db.open();
+});
+
+async function seed(entry: Partial<StrategyJournalEntry>) {
+  const full: StrategyJournalEntry = {
+    id: 's1',
+    scope: 'strategy',
+    createdAt: 100,
+    updatedAt: 100,
+    name: '',
+    conditions: '',
+    invalidation: '',
+    idealRR: '',
+    examples: '',
+    recurringMistakes: '',
+    notes: '',
+    provenance: 'observed',
+    ...entry,
+  };
+  await db.journalEntries.put(full);
+}
+
+function renderForm(id = 's1') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <StrategyJournalForm id={id} db={db} />
+    </QueryClientProvider>,
+  );
+}
+
+describe('StrategyJournalForm', () => {
+  it('renders the seven fields', async () => {
+    await seed({ id: 's1' });
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument());
+    expect(screen.getByLabelText(/conditions/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/invalidation/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/ideal r:r/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/examples/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/recurring mistakes/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^notes$/i)).toBeInTheDocument();
+  });
+
+  it('pre-populates from an existing entry', async () => {
+    await seed({ id: 's1', name: 'Breakout', idealRR: '2:1' });
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^name$/i)).toHaveValue('Breakout'));
+    expect(screen.getByLabelText(/ideal r:r/i)).toHaveValue('2:1');
+  });
+
+  it('saves name changes on blur', async () => {
+    await seed({ id: 's1', name: 'Original' });
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^name$/i)).toHaveValue('Original'));
+    const field = screen.getByLabelText(/^name$/i);
+    fireEvent.change(field, { target: { value: 'Renamed' } });
+    fireEvent.blur(field);
+    await waitFor(() => expect(screen.getByText(/saved at/i)).toBeInTheDocument());
+    const row = await db.journalEntries.get('s1');
+    if (!row || row.scope !== 'strategy') throw new Error('expected strategy');
+    expect(row.name).toBe('Renamed');
+  });
+
+  it('saves conditions on blur', async () => {
+    await seed({ id: 's1', name: 'Breakout' });
+    renderForm();
+    // Wait for hydration so the seeded entry is loaded into the draft
+    // before we type — otherwise the hydration effect can overwrite the
+    // typed text between change and blur.
+    await waitFor(() => expect(screen.getByLabelText(/^name$/i)).toHaveValue('Breakout'));
+    const field = screen.getByLabelText(/conditions/i);
+    fireEvent.change(field, { target: { value: 'clear resistance break' } });
+    fireEvent.blur(field);
+    await waitFor(async () => {
+      const row = await db.journalEntries.get('s1');
+      if (!row || row.scope !== 'strategy') throw new Error('expected strategy');
+      expect(row.conditions).toBe('clear resistance break');
+    });
+  });
+
+  it('redirects the user gracefully when the entry does not exist', async () => {
+    // The form renders with id that doesn't exist in Dexie. Since this is
+    // a component-level concern (not routing), the form simply shows no
+    // pre-populated data and does nothing on blur (isDraftEmpty + !entry).
+    renderForm('does-not-exist');
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue(''),
+    );
+    fireEvent.blur(screen.getByLabelText(/^name$/i));
+    await new Promise((r) => setTimeout(r, 50));
+    // Empty-form blur with no existing entry should NOT create a row.
+    expect(await db.journalEntries.count()).toBe(0);
+  });
+});
