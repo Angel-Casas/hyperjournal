@@ -181,6 +181,60 @@ describe('ExportFileSchema', () => {
     ).toThrow();
   });
 
+  it('parses a file with a strategy journalEntries row', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'strat-1',
+            scope: 'strategy',
+            createdAt: 1,
+            updatedAt: 1,
+            name: 'Breakout',
+            conditions: 'clear resistance break',
+            invalidation: '',
+            idealRR: '2:1',
+            examples: '',
+            recurringMistakes: '',
+            notes: '',
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    expect(out.data.journalEntries).toHaveLength(1);
+    expect(out.data.journalEntries![0]!.scope).toBe('strategy');
+  });
+
+  it('rejects a strategy entry missing the name field', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        ...validFile,
+        data: {
+          ...validFile.data,
+          journalEntries: [
+            {
+              id: 'strat-1',
+              scope: 'strategy',
+              createdAt: 1,
+              updatedAt: 1,
+              // no name
+              conditions: '',
+              invalidation: '',
+              idealRR: '',
+              examples: '',
+              recurringMistakes: '',
+              notes: '',
+              provenance: 'observed',
+            },
+          ],
+        },
+      }),
+    ).toThrow();
+  });
+
   it('rejects a journalEntries row with an invalid scope', () => {
     expect(() =>
       ExportFileSchema.parse({

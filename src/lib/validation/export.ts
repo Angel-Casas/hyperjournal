@@ -89,9 +89,25 @@ const SessionJournalEntrySchema = z.object({
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
+const StrategyJournalEntrySchema = z.object({
+  id: z.string().min(1),
+  scope: z.literal('strategy'),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+  name: z.string(),
+  conditions: z.string(),
+  invalidation: z.string(),
+  idealRR: z.string(),
+  examples: z.string(),
+  recurringMistakes: z.string(),
+  notes: z.string(),
+  provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
+});
+
 const JournalEntrySchema = z.discriminatedUnion('scope', [
   TradeJournalEntrySchema,
   SessionJournalEntrySchema,
+  StrategyJournalEntrySchema,
 ]);
 
 const ExportDataSchema = z.object({
