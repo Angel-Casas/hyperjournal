@@ -106,6 +106,7 @@ describe('createImportRepo', () => {
           mood: null,
           planFollowed: null,
           stopLossUsed: null,
+          strategyId: null,
           provenance: 'observed',
         },
       ],

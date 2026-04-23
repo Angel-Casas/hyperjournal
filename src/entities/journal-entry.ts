@@ -40,6 +40,14 @@ export type TradeJournalEntry = {
   readonly planFollowed: boolean | null;
   readonly stopLossUsed: boolean | null;
 
+  /**
+   * UUID of a StrategyJournalEntry this trade is linked to, or null.
+   * Introduced in Session 7d. Pre-7d rows may carry `undefined` in
+   * storage; consumers treat `undefined` as `null` (see the form and
+   * TradeDetail chip). Next upsert writes `null` explicitly.
+   */
+  readonly strategyId: string | null;
+
   readonly provenance: Provenance;
 };
 

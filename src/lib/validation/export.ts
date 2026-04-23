@@ -71,6 +71,7 @@ const TradeJournalEntrySchema = z.object({
   mood: MoodSchema,
   planFollowed: z.boolean().nullable(),
   stopLossUsed: z.boolean().nullable(),
+  strategyId: z.string().min(1).nullable().default(null),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 

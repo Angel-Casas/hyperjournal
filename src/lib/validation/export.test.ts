@@ -235,6 +235,93 @@ describe('ExportFileSchema', () => {
     ).toThrow();
   });
 
+  it('parses a trade entry with strategyId set to a string', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: '',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            strategyId: 'strat-uuid-abc',
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade');
+    expect(first.strategyId).toBe('strat-uuid-abc');
+  });
+
+  it('parses a trade entry with strategyId explicitly null', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: '',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            strategyId: null,
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade');
+    expect(first.strategyId).toBeNull();
+  });
+
+  it('defaults strategyId to null when the field is missing (pre-7d export)', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: '',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            // no strategyId — pre-7d export shape
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade');
+    expect(first.strategyId).toBeNull();
+  });
+
   it('rejects a journalEntries row with an invalid scope', () => {
     expect(() =>
       ExportFileSchema.parse({
