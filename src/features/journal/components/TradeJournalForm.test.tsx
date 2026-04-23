@@ -3,7 +3,27 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TradeJournalForm } from './TradeJournalForm';
 import { HyperJournalDb } from '@lib/storage/db';
-import type { TradeJournalEntry } from '@entities/journal-entry';
+import type { StrategyJournalEntry, TradeJournalEntry } from '@entities/journal-entry';
+
+async function seedStrategy(
+  db: HyperJournalDb,
+  overrides: Partial<StrategyJournalEntry> & { id: string; name: string },
+) {
+  const full: StrategyJournalEntry = {
+    scope: 'strategy',
+    createdAt: 0,
+    updatedAt: 0,
+    conditions: '',
+    invalidation: '',
+    idealRR: '',
+    examples: '',
+    recurringMistakes: '',
+    notes: '',
+    provenance: 'observed',
+    ...overrides,
+  };
+  await db.journalEntries.put(full);
+}
 
 afterEach(() => {
   cleanup();
@@ -50,6 +70,7 @@ describe('TradeJournalForm', () => {
       mood: 'calm',
       planFollowed: null,
       stopLossUsed: null,
+      strategyId: null,
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);
@@ -113,5 +134,115 @@ describe('TradeJournalForm', () => {
       if (first.scope !== 'trade') throw new Error('expected trade entry');
       expect(first.planFollowed).toBe(true);
     });
+  });
+
+  it('renders the strategy picker with "— no strategy" option', async () => {
+    renderForm();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^strategy$/i)).toBeInTheDocument(),
+    );
+    const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(
+      Array.from(select.options).some((o) => /no strategy/i.test(o.textContent ?? '')),
+    ).toBe(true);
+  });
+
+  it('renders strategies by name; blank names render as "Untitled"', async () => {
+    await seedStrategy(db, { id: 's-a', name: 'Breakout' });
+    await seedStrategy(db, { id: 's-b', name: '' });
+    renderForm();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^strategy$/i)).toBeInTheDocument(),
+    );
+    await waitFor(() => {
+      const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+      const labels = Array.from(select.options).map((o) => o.textContent ?? '');
+      expect(labels).toEqual(
+        expect.arrayContaining([expect.stringMatching(/Breakout/), 'Untitled']),
+      );
+    });
+  });
+
+  it('selecting a strategy + blur saves strategyId', async () => {
+    await seedStrategy(db, { id: 's-a', name: 'Breakout' });
+    renderForm();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^strategy$/i)).toBeInTheDocument(),
+    );
+    // wait for the picker to populate with the seeded strategy
+    await waitFor(() => {
+      const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+      expect(Array.from(select.options).some((o) => o.value === 's-a')).toBe(true);
+    });
+    const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 's-a' } });
+    fireEvent.blur(select);
+    await waitFor(async () => {
+      const rows = await db.journalEntries.toArray();
+      const trade = rows.find((r) => r.scope === 'trade');
+      if (!trade || trade.scope !== 'trade') throw new Error('expected trade');
+      expect(trade.strategyId).toBe('s-a');
+    });
+  });
+
+  it('selecting "— no strategy" after a prior link saves strategyId=null', async () => {
+    const existing: TradeJournalEntry = {
+      id: 'e1',
+      scope: 'trade',
+      tradeId: 'BTC-1',
+      createdAt: 100,
+      updatedAt: 100,
+      preTradeThesis: '',
+      postTradeReview: '',
+      lessonLearned: '',
+      mood: null,
+      planFollowed: null,
+      stopLossUsed: null,
+      strategyId: 's-a',
+      provenance: 'observed',
+    };
+    await db.journalEntries.put(existing);
+    await seedStrategy(db, { id: 's-a', name: 'Breakout' });
+    renderForm();
+    await waitFor(() =>
+      expect((screen.getByLabelText(/^strategy$/i) as HTMLSelectElement).value).toBe('s-a'),
+    );
+    const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: '' } });
+    fireEvent.blur(select);
+    await waitFor(async () => {
+      const row = await db.journalEntries.get('e1');
+      if (!row || row.scope !== 'trade') throw new Error('expected trade');
+      expect(row.strategyId).toBeNull();
+    });
+  });
+
+  it('renders "— deleted strategy" when strategyId has no matching row', async () => {
+    const existing: TradeJournalEntry = {
+      id: 'e1',
+      scope: 'trade',
+      tradeId: 'BTC-1',
+      createdAt: 100,
+      updatedAt: 100,
+      preTradeThesis: '',
+      postTradeReview: '',
+      lessonLearned: '',
+      mood: null,
+      planFollowed: null,
+      stopLossUsed: null,
+      strategyId: 'gone',
+      provenance: 'observed',
+    };
+    await db.journalEntries.put(existing);
+    renderForm();
+    await waitFor(() =>
+      expect((screen.getByLabelText(/^strategy$/i) as HTMLSelectElement).value).toBe('gone'),
+    );
+    const select = screen.getByLabelText(/^strategy$/i) as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent ?? '');
+    expect(labels).toEqual(
+      expect.arrayContaining([expect.stringMatching(/deleted strategy/i)]),
+    );
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTradeJournalEntry } from '../hooks/useTradeJournalEntry';
+import { useStrategies } from '../hooks/useStrategies';
 import { TriStateRadio } from './TriStateRadio';
 import { Label } from '@lib/ui/components/label';
 import { cn } from '@lib/ui/utils';
@@ -18,6 +19,7 @@ type DraftState = {
   mood: Mood | null;
   planFollowed: boolean | null;
   stopLossUsed: boolean | null;
+  strategyId: string | null;
 };
 
 type Status =
@@ -34,6 +36,7 @@ const EMPTY_DRAFT: DraftState = {
   mood: null,
   planFollowed: null,
   stopLossUsed: null,
+  strategyId: null,
 };
 
 const MOOD_OPTIONS: ReadonlyArray<{ value: Mood | ''; label: string }> = [
@@ -52,7 +55,8 @@ function isDraftEmpty(draft: DraftState): boolean {
     draft.lessonLearned.trim() === '' &&
     draft.mood === null &&
     draft.planFollowed === null &&
-    draft.stopLossUsed === null
+    draft.stopLossUsed === null &&
+    draft.strategyId === null
   );
 }
 
@@ -65,6 +69,8 @@ function entryToDraft(entry: TradeJournalEntry | null): DraftState {
     mood: entry.mood,
     planFollowed: entry.planFollowed,
     stopLossUsed: entry.stopLossUsed,
+    // Pre-7d rows may carry undefined here; treat as null.
+    strategyId: entry.strategyId ?? null,
   };
 }
 
@@ -77,6 +83,7 @@ function formatSavedAt(at: number): string {
 
 export function TradeJournalForm({ tradeId, db }: Props) {
   const hook = useTradeJournalEntry(tradeId, db ? { db } : {});
+  const strategies = useStrategies(db ? { db } : {});
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
@@ -122,6 +129,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
       mood: next.mood,
       planFollowed: next.planFollowed,
       stopLossUsed: next.stopLossUsed,
+      strategyId: next.strategyId,
       provenance: 'observed',
     };
     try {
@@ -217,6 +225,45 @@ export function TradeJournalForm({ tradeId, db }: Props) {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="strategy">Strategy</Label>
+        <select
+          id="strategy"
+          value={draft.strategyId ?? ''}
+          onChange={(e) =>
+            change('strategyId', e.target.value === '' ? null : e.target.value)
+          }
+          onBlur={onBlurCommit}
+          className={cn(
+            'h-10 rounded-md border border-border bg-bg-overlay px-3 text-sm text-fg-base',
+            'ring-offset-bg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+          )}
+        >
+          <option value="">— no strategy</option>
+          {draft.strategyId &&
+            !strategies.entries.some((s) => s.id === draft.strategyId) && (
+              <option value={draft.strategyId}>— deleted strategy</option>
+            )}
+          {strategies.entries.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name.trim() === '' ? 'Untitled' : s.name}
+            </option>
+          ))}
+        </select>
+        {!strategies.isLoading && strategies.entries.length === 0 && (
+          <p className="text-xs text-fg-muted">
+            Create strategies in{' '}
+            <a
+              href="/strategies"
+              className="underline ring-offset-bg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              /strategies
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       <TriStateRadio
