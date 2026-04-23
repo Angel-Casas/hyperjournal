@@ -1,12 +1,19 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { isValidWalletAddress } from '@domain/wallets/isValidWalletAddress';
 import { useWalletMetrics } from '@features/wallets';
-import { TradeJournalForm } from '@features/journal';
+import {
+  TradeJournalForm,
+  useStrategies,
+  useTradeJournalEntry,
+} from '@features/journal';
 import { formatCurrency, formatHoldTime } from '@lib/ui/format';
 import type { WalletAddress } from '@entities/wallet';
 import type { ReconstructedTrade } from '@entities/trade';
+import type { HyperJournalDb } from '@lib/storage/db';
 
-export function TradeDetail() {
+type Props = { db?: HyperJournalDb };
+
+export function TradeDetail({ db }: Props = {}) {
   const { address, tradeId } = useParams<{ address: string; tradeId: string }>();
 
   if (!address || !isValidWalletAddress(address)) {
@@ -16,17 +23,27 @@ export function TradeDetail() {
     return <Navigate to={`/w/${address}`} replace />;
   }
 
-  return <TradeDetailInner address={address} tradeId={tradeId} />;
+  return (
+    <TradeDetailInner
+      address={address}
+      tradeId={tradeId}
+      {...(db ? { db } : {})}
+    />
+  );
 }
 
 function TradeDetailInner({
   address,
   tradeId,
+  db,
 }: {
   address: WalletAddress;
   tradeId: string;
+  db?: HyperJournalDb;
 }) {
   const metrics = useWalletMetrics(address);
+  const journal = useTradeJournalEntry(tradeId, db ? { db } : {});
+  const strategies = useStrategies(db ? { db } : {});
 
   if (metrics.isLoading) {
     return (
@@ -41,6 +58,11 @@ function TradeDetailInner({
     return <Navigate to={`/w/${address}`} replace />;
   }
 
+  const strategyId = journal.entry?.strategyId ?? null;
+  const linkedStrategy = strategyId
+    ? strategies.entries.find((s) => s.id === strategyId) ?? null
+    : null;
+
   return (
     <main className="flex min-h-[100dvh] flex-col gap-6 bg-bg-base p-6">
       <header className="flex items-center justify-between gap-4">
@@ -48,6 +70,14 @@ function TradeDetailInner({
           <h1 className="text-xl font-semibold text-fg-base">{trade.coin}</h1>
           <SideBadge side={trade.side} />
           <StatusBadge status={trade.status} />
+          {linkedStrategy && (
+            <Link
+              to={`/s/${linkedStrategy.id}`}
+              className="rounded-md border border-border bg-bg-overlay px-2 py-0.5 text-xs text-fg-base underline ring-offset-bg-base hover:bg-bg-overlay/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              Strategy: {linkedStrategy.name.trim() === '' ? 'Untitled' : linkedStrategy.name} →
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -66,7 +96,7 @@ function TradeDetailInner({
       </header>
 
       <TradeSummary trade={trade} />
-      <TradeJournalForm tradeId={trade.id} />
+      <TradeJournalForm tradeId={trade.id} {...(db ? { db } : {})} />
     </main>
   );
 }
