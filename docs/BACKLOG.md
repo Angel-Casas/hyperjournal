@@ -160,3 +160,17 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` JournalPanel filtering by mindset / date range / has-content. Small but useful once users have tens of entries.
 - `[maybe]` Local-timezone mode for session date keys. Today UTC is used across the app (calendar, session journal, export). A single toggle + corresponding `todayLocalDateString` helper would flip it.
 - `[maybe]` Shared autosave-on-blur hook. TradeJournalForm and SessionJournalForm implement the same pattern independently. Extract when Session 7c adds a third form — three is the trigger for DRY.
+
+---
+
+## Session 7c deferrals
+
+- `[next]` Tags + trade↔strategy linking — Session 7d. `tags: string[]` on all journal variants; trades reference strategies by id. Autocomplete from existing tags. Normalization decisions (case sensitivity, whitespace).
+- `[next]` Screenshots/images — Session 7e. IndexedDB blob storage.
+- `[maybe]` Strategy delete. Soft (archive) or hard with confirmation dialog. Depends on which BACKLOG item above (archive/status) lands first.
+- `[maybe]` Strategy archive/status. Active / retired / paused. Filter on the list.
+- `[maybe]` Per-strategy analytics on `/w/:address` (e.g., win rate of trades tagged with strategy X). Blocked on tags + trade↔strategy linking.
+- `[maybe]` Duplicate-name warnings. Soft UX nudge when creating a strategy with an existing name.
+- `[maybe]` Reorder strategies. Drag-to-reorder on `/strategies`; needs a per-row `sortKey` or an explicit ordering array.
+- `[maybe]` Full-text search across strategy content. Once a user has 10+ strategies, finding "the one with invalidation below 200-day MA" by memory gets slow.
+- `[maybe]` Strategy-specific templates. Preset strategies (breakout, mean-reversion, trend-follow) that the user can clone with pre-filled conditions.

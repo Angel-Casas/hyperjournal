@@ -516,3 +516,50 @@ Every session **must** add an entry before closing. The goal is that a future se
 - The `_schemaCheck` in lib/validation/export.ts still holds one-way: the Zod discriminated union's inferred shape is assignable to the entity union.
 
 ---
+
+## 2026-04-22 — Phase 1 Session 7c: Strategy/setup journal
+
+**Session goal:** Ship the third journal scope — strategy/setup entries. Closes the scope-trinity from plan §11.8 (trade + session + strategy).
+
+**Done:**
+
+- `src/entities/journal-entry.ts`: `StrategyJournalEntry` added as the third variant. Seven fields (name, conditions, invalidation, idealRR free-text, examples, recurringMistakes, notes) per plan §11.8 Section C. Wallet-agnostic.
+- No Dexie schema bump — v3's scope + updatedAt indexes cover strategy listing. Rows sort in-memory by updatedAt desc.
+- Repo extensions: `findStrategyById` (by UUID; scope-gated), `listStrategies(limit?)` (scope-filtered, in-memory sort). Previous `listSessionEntries` + `listAllTradeIds` already scope-gated so strategy rows can't leak. [+5 tests]
+- Three hooks in `src/features/journal/hooks/`:
+  - `useStrategyEntry(id)` — read/save/remove a single strategy. [+3 tests]
+  - `useStrategies(limit?)` — list all strategies. [+2 tests]
+  - `useCreateStrategy()` — generates UUID, writes empty-content row with the given name, returns the id for navigation. [+2 tests]
+- `StrategyJournalForm` — 7 fields with autosave-on-blur. Same pattern as TradeJournalForm/SessionJournalForm (draftRef, hydration guard, isDraftEmpty, form-level status). [+5 tests]
+- `/strategies` route with `Strategies.tsx` list page — header with Back + Settings, inline "+ New strategy" form with empty-name validation, list of existing strategies with name + updated-date + teaser. Empty state. [+5 tests]
+- `/s/:id` route with `StrategyDetail.tsx` — header shows live strategy name (falls back to "Untitled"), Settings + Back-to-/strategies links. Unknown id redirects. StrategyJournalForm mounts below. [+3 tests]
+- `JournalPanel` extended with a small "Strategies →" link next to the Today CTA. Header flex-wraps to stay tidy on narrow viewports. [+1 test]
+- Zod discriminated union grows a third branch: `StrategyJournalEntrySchema`. [+2 validation cases]
+- Playwright: `e2e/strategy-journal-roundtrip.spec.ts` — two tests covering create→edit→blur→reload persistence and list-appearance-after-creation. [+2 E2E tests]
+- End state: **317** unit tests, **9** E2E tests (was 7; +2), gauntlet clean.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Tags + trade↔strategy linking — Session 7d.
+- Screenshots/images — Session 7e.
+- Strategy delete, archive, reorder, per-strategy analytics, duplicate-name warnings — BACKLOG.
+
+**Gotchas for next session:**
+
+- `JournalEntry` is now a three-variant union. Every consumer that destructures a variant-specific field must narrow on scope (see narrowing pattern in repo methods + test helpers).
+- `useCreateStrategy` returns the new id. Consumers that call it (just Strategies.tsx) must navigate immediately after; otherwise the user sees a stale empty list until they refresh.
+- `listStrategies` takes an OPTIONAL `limit` — pass `undefined` to get everything. The default in the query-key changes based on `limit ?? 'all'` to avoid cache-key collisions when callers pass different limits.
+- Duplicate names are allowed by design. If users complain, add a soft "Already named X" warning (BACKLOG).
+- Strategy heading on `/s/:id` reads the live name via useStrategyEntry. The query invalidates on save, so the heading updates ~instantly after a name rename blur.
+- Dexie's `InsertType<Union>` issue stays — inline `put({...})` in tests needs hoisting to `const entry: StrategyJournalEntry = {...}` or equivalent `as` cast.
+
+**Invariants assumed:**
+
+- Strategy entry IDs are UUID v4 from `crypto.randomUUID()`, generated at create time; stable thereafter.
+- Strategy entries always exist in Dexie once `useCreateStrategy().create(name)` resolves. StrategyJournalForm's `isDraftEmpty` guard is defense-in-depth.
+- `/strategies` list ordering is `updatedAt desc` — recently edited bubbles up. Custom ordering is BACKLOG.
+- Blank names are valid data; the UI renders "Untitled" visually but preserves `""` in storage.
+
+---
