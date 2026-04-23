@@ -67,8 +67,38 @@ export type SessionJournalEntry = {
 };
 
 /**
- * Discriminated union across all journal scopes. Narrow on `scope` to
- * access variant-specific fields. Sessions 7c/7d will extend this union
- * with 'strategy' and image-attachment variants.
+ * Strategy/setup-scoped journal entry. Introduced in Session 7c.
+ * Wallet-agnostic (trader-level reference material — the setup belongs
+ * to the trader, not to a specific wallet). Keyed by UUID so renaming
+ * doesn't break any future cross-references.
+ *
+ * `name` is a regular content field the user can edit at any time. The
+ * detail page heading reads the live name; blank names render as
+ * "Untitled" but remain valid data.
  */
-export type JournalEntry = TradeJournalEntry | SessionJournalEntry;
+export type StrategyJournalEntry = {
+  readonly id: string;
+  readonly scope: 'strategy';
+  readonly createdAt: number;
+  readonly updatedAt: number;
+
+  readonly name: string;
+  readonly conditions: string;
+  readonly invalidation: string;
+  readonly idealRR: string; // free-form: "2:1", "2-3:1", "3R min"
+  readonly examples: string;
+  readonly recurringMistakes: string;
+  readonly notes: string;
+
+  readonly provenance: Provenance;
+};
+
+/**
+ * Discriminated union across all journal scopes. Narrow on `scope` to
+ * access variant-specific fields. Session 7d will extend this union
+ * with image-attachment variants.
+ */
+export type JournalEntry =
+  | TradeJournalEntry
+  | SessionJournalEntry
+  | StrategyJournalEntry;

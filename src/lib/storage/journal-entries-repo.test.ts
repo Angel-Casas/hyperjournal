@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HyperJournalDb } from './db';
 import { createJournalEntriesRepo } from './journal-entries-repo';
-import type { JournalEntry, SessionJournalEntry } from '@entities/journal-entry';
+import type {
+  JournalEntry,
+  SessionJournalEntry,
+  StrategyJournalEntry,
+} from '@entities/journal-entry';
 
 let db: HyperJournalDb;
 
@@ -45,6 +49,24 @@ function makeSessionEntry(overrides: Partial<SessionJournalEntry> = {}): Journal
     whatToAvoid: '',
     mindset: null,
     disciplineScore: null,
+    provenance: 'observed',
+    ...overrides,
+  } as JournalEntry;
+}
+
+function makeStrategyEntry(overrides: Partial<StrategyJournalEntry> = {}): JournalEntry {
+  return {
+    id: 'strat-1',
+    scope: 'strategy',
+    createdAt: 100,
+    updatedAt: 100,
+    name: '',
+    conditions: '',
+    invalidation: '',
+    idealRR: '',
+    examples: '',
+    recurringMistakes: '',
+    notes: '',
     provenance: 'observed',
     ...overrides,
   } as JournalEntry;
@@ -149,5 +171,47 @@ describe('createJournalEntriesRepo', () => {
     const ids = await repo.listAllTradeIds();
     expect(ids.has('BTC-1')).toBe(true);
     expect(ids.size).toBe(1);
+  });
+
+  it('findStrategyById returns the strategy entry when one exists', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeStrategyEntry({ id: 's1', name: 'Breakout' }));
+    const found = await repo.findStrategyById('s1');
+    expect(found?.name).toBe('Breakout');
+    expect(found?.scope).toBe('strategy');
+  });
+
+  it('findStrategyById returns null when the id is a different scope', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeTradeEntry({ id: 'x' }));
+    expect(await repo.findStrategyById('x')).toBeNull();
+  });
+
+  it('listStrategies returns strategy-scope rows ordered by updatedAt desc', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeStrategyEntry({ id: 'old', name: 'A', updatedAt: 100 }));
+    await repo.upsert(makeStrategyEntry({ id: 'new', name: 'B', updatedAt: 300 }));
+    await repo.upsert(makeSessionEntry({ id: 'sess', updatedAt: 200 }));
+    const result = await repo.listStrategies();
+    expect(result).toHaveLength(2);
+    expect(result[0]!.id).toBe('new');
+    expect(result[1]!.id).toBe('old');
+  });
+
+  it('listStrategies respects the limit arg', async () => {
+    const repo = createJournalEntriesRepo(db);
+    for (let i = 0; i < 4; i++) {
+      await repo.upsert(
+        makeStrategyEntry({ id: `s${i}`, name: `S${i}`, updatedAt: i }),
+      );
+    }
+    expect(await repo.listStrategies(2)).toHaveLength(2);
+  });
+
+  it('listSessionEntries + listAllTradeIds do not leak strategy rows', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeStrategyEntry({ id: 's1', name: 'Breakout' }));
+    expect(await repo.listSessionEntries()).toEqual([]);
+    expect((await repo.listAllTradeIds()).size).toBe(0);
   });
 });
