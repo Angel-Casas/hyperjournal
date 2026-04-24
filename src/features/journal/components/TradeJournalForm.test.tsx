@@ -138,6 +138,26 @@ describe('TradeJournalForm', () => {
     });
   });
 
+  it('renders the Tags field with label', async () => {
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^tags$/i)).toBeInTheDocument());
+  });
+
+  it('typing a tag + Enter + blur persists the tag on the Dexie row', async () => {
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^tags$/i)).toBeInTheDocument());
+    const input = screen.getByLabelText(/^tags$/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'breakout' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+    await waitFor(async () => {
+      const rows = await db.journalEntries.toArray();
+      const trade = rows.find((r) => r.scope === 'trade');
+      if (!trade || trade.scope !== 'trade') throw new Error('expected trade');
+      expect(trade.tags).toEqual(['breakout']);
+    });
+  });
+
   it('renders the strategy picker with "— no strategy" option', async () => {
     renderForm();
     await waitFor(() =>

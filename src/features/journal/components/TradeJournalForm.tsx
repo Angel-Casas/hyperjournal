@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTradeJournalEntry } from '../hooks/useTradeJournalEntry';
 import { useStrategies } from '../hooks/useStrategies';
+import { useAllTags } from '../hooks/useAllTags';
 import { TriStateRadio } from './TriStateRadio';
 import { Label } from '@lib/ui/components/label';
+import { TagInput } from '@lib/ui/components/tag-input';
+import { normalizeTagList } from '@lib/tags/normalizeTag';
 import { cn } from '@lib/ui/utils';
 import type { Mood, TradeJournalEntry } from '@entities/journal-entry';
 import type { HyperJournalDb } from '@lib/storage/db';
@@ -20,6 +23,7 @@ type DraftState = {
   planFollowed: boolean | null;
   stopLossUsed: boolean | null;
   strategyId: string | null;
+  tags: ReadonlyArray<string>;
 };
 
 type Status =
@@ -37,6 +41,7 @@ const EMPTY_DRAFT: DraftState = {
   planFollowed: null,
   stopLossUsed: null,
   strategyId: null,
+  tags: [],
 };
 
 const MOOD_OPTIONS: ReadonlyArray<{ value: Mood | ''; label: string }> = [
@@ -56,7 +61,8 @@ function isDraftEmpty(draft: DraftState): boolean {
     draft.mood === null &&
     draft.planFollowed === null &&
     draft.stopLossUsed === null &&
-    draft.strategyId === null
+    draft.strategyId === null &&
+    draft.tags.length === 0
   );
 }
 
@@ -71,6 +77,8 @@ function entryToDraft(entry: TradeJournalEntry | null): DraftState {
     stopLossUsed: entry.stopLossUsed,
     // Pre-7d rows may carry undefined here; treat as null.
     strategyId: entry.strategyId ?? null,
+    // Pre-7e rows may carry undefined; treat as [].
+    tags: entry.tags ?? [],
   };
 }
 
@@ -84,6 +92,7 @@ function formatSavedAt(at: number): string {
 export function TradeJournalForm({ tradeId, db }: Props) {
   const hook = useTradeJournalEntry(tradeId, db ? { db } : {});
   const strategies = useStrategies(db ? { db } : {});
+  const allTags = useAllTags(db ? { db } : {});
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
@@ -130,7 +139,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
       planFollowed: next.planFollowed,
       stopLossUsed: next.stopLossUsed,
       strategyId: next.strategyId,
-      tags: [], // placeholder until Task 4 adds Tags field to the draft
+      tags: normalizeTagList(next.tags),
       provenance: 'observed',
     };
     try {
@@ -154,6 +163,11 @@ export function TradeJournalForm({ tradeId, db }: Props) {
   function onBlurCommit() {
     void commit(draftRef.current);
   }
+
+  const suggestions = useMemo(
+    () => allTags.tags.filter((t) => !draft.tags.includes(t)),
+    [allTags.tags, draft.tags],
+  );
 
   return (
     <section
@@ -265,6 +279,18 @@ export function TradeJournalForm({ tradeId, db }: Props) {
             .
           </p>
         )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="tags">Tags</Label>
+        <TagInput
+          id="tags"
+          value={draft.tags}
+          onChange={(v) => change('tags', v)}
+          onBlur={onBlurCommit}
+          suggestions={suggestions}
+          placeholder="Add tags, press Enter"
+        />
       </div>
 
       <TriStateRadio
