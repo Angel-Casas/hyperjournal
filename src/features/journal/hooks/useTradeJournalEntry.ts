@@ -38,6 +38,8 @@ export function useTradeJournalEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade', tradeId] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade-ids'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'trade-tags-by-id'] });
     },
   });
 
@@ -46,6 +48,8 @@ export function useTradeJournalEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade', tradeId] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'trade-ids'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'trade-tags-by-id'] });
     },
   });
 

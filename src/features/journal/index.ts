@@ -10,3 +10,4 @@ export { useRecentSessionEntries } from './hooks/useRecentSessionEntries';
 export { useStrategyEntry } from './hooks/useStrategyEntry';
 export { useStrategies } from './hooks/useStrategies';
 export { useCreateStrategy } from './hooks/useCreateStrategy';
+export { useAllTags } from './hooks/useAllTags';

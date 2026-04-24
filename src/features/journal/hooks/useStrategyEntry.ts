@@ -38,6 +38,7 @@ export function useStrategyEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'strategy', id] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'strategies'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
     },
   });
 
@@ -46,6 +47,7 @@ export function useStrategyEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'strategy', id] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'strategies'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
     },
   });
 

@@ -38,6 +38,7 @@ export function useSessionJournalEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'session', date] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'recent-sessions'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
     },
   });
 
@@ -46,6 +47,7 @@ export function useSessionJournalEntry(
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['journal', 'session', date] });
       await queryClient.invalidateQueries({ queryKey: ['journal', 'recent-sessions'] });
+      await queryClient.invalidateQueries({ queryKey: ['journal', 'all-tags'] });
     },
   });
 
