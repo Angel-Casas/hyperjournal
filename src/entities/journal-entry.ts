@@ -51,7 +51,7 @@ export type TradeJournalEntry = {
   /**
    * Free-form labels attached to this entry. Introduced in Session 7e.
    * Normalized (lowercase + trim + whitespace-collapsed) on save; see
-   * `@domain/tags/normalizeTag`. Pre-7e rows may carry `undefined`;
+   * `@lib/tags/normalizeTag`. Pre-7e rows may carry `undefined`;
    * consumers treat `undefined` as `[]`.
    */
   readonly tags: ReadonlyArray<string>;
@@ -81,7 +81,7 @@ export type SessionJournalEntry = {
 
   /**
    * Free-form labels attached to this entry. Same pool as trade/strategy
-   * tags. See `@domain/tags/normalizeTag`.
+   * tags. See `@lib/tags/normalizeTag`.
    */
   readonly tags: ReadonlyArray<string>;
 
@@ -114,7 +114,7 @@ export type StrategyJournalEntry = {
 
   /**
    * Free-form labels attached to this strategy. Same pool as trade and
-   * session tags. See `@domain/tags/normalizeTag`.
+   * session tags. See `@lib/tags/normalizeTag`.
    */
   readonly tags: ReadonlyArray<string>;
 
