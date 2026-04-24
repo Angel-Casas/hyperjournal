@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStrategyEntry } from '../hooks/useStrategyEntry';
+import { useAllTags } from '../hooks/useAllTags';
 import { Input } from '@lib/ui/components/input';
 import { Label } from '@lib/ui/components/label';
+import { TagInput } from '@lib/ui/components/tag-input';
+import { normalizeTagList } from '@lib/tags/normalizeTag';
 import { cn } from '@lib/ui/utils';
 import type { StrategyJournalEntry } from '@entities/journal-entry';
 import type { HyperJournalDb } from '@lib/storage/db';
@@ -19,6 +22,7 @@ type DraftState = {
   examples: string;
   recurringMistakes: string;
   notes: string;
+  tags: ReadonlyArray<string>;
 };
 
 type Status =
@@ -36,6 +40,7 @@ const EMPTY_DRAFT: DraftState = {
   examples: '',
   recurringMistakes: '',
   notes: '',
+  tags: [],
 };
 
 function isDraftEmpty(d: DraftState): boolean {
@@ -46,7 +51,8 @@ function isDraftEmpty(d: DraftState): boolean {
     d.idealRR.trim() === '' &&
     d.examples.trim() === '' &&
     d.recurringMistakes.trim() === '' &&
-    d.notes.trim() === ''
+    d.notes.trim() === '' &&
+    d.tags.length === 0
   );
 }
 
@@ -60,6 +66,7 @@ function entryToDraft(entry: StrategyJournalEntry | null): DraftState {
     examples: entry.examples,
     recurringMistakes: entry.recurringMistakes,
     notes: entry.notes,
+    tags: entry.tags ?? [],
   };
 }
 
@@ -72,6 +79,7 @@ function formatSavedAt(at: number): string {
 
 export function StrategyJournalForm({ id, db }: Props) {
   const hook = useStrategyEntry(id, db ? { db } : {});
+  const allTags = useAllTags(db ? { db } : {});
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
@@ -106,7 +114,7 @@ export function StrategyJournalForm({ id, db }: Props) {
       examples: next.examples,
       recurringMistakes: next.recurringMistakes,
       notes: next.notes,
-      tags: [], // placeholder until Task 5 adds Tags field to the draft
+      tags: normalizeTagList(next.tags),
       provenance: 'observed',
     };
     try {
@@ -130,6 +138,11 @@ export function StrategyJournalForm({ id, db }: Props) {
   function onBlurCommit() {
     void commit(draftRef.current);
   }
+
+  const suggestions = useMemo(
+    () => allTags.tags.filter((t) => !draft.tags.includes(t)),
+    [allTags.tags, draft.tags],
+  );
 
   return (
     <section
@@ -227,6 +240,18 @@ export function StrategyJournalForm({ id, db }: Props) {
           placeholder="Anything else — links to trades, evolving rules, questions."
           rows={4}
           className={textareaClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="tags">Tags</Label>
+        <TagInput
+          id="tags"
+          value={draft.tags}
+          onChange={(v) => change('tags', v)}
+          onBlur={onBlurCommit}
+          suggestions={suggestions}
+          placeholder="Add tags, press Enter"
         />
       </div>
     </section>

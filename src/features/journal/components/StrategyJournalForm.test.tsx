@@ -96,6 +96,31 @@ describe('StrategyJournalForm', () => {
     });
   });
 
+  it('renders the Tags field with label', async () => {
+    await seed({ id: 's1' });
+    renderForm();
+    await waitFor(() => expect(screen.getByLabelText(/^tags$/i)).toBeInTheDocument());
+  });
+
+  it('typing a tag + Enter + blur persists the tag on the Dexie row', async () => {
+    await seed({ id: 's1', name: 'Breakout' });
+    renderForm();
+    // Wait for hydration so the seeded entry is loaded into the draft
+    // before we type — otherwise the hydration effect can overwrite.
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue('Breakout'),
+    );
+    const input = screen.getByLabelText(/^tags$/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'momentum' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+    await waitFor(async () => {
+      const row = await db.journalEntries.get('s1');
+      if (!row || row.scope !== 'strategy') throw new Error('expected strategy');
+      expect(row.tags).toEqual(['momentum']);
+    });
+  });
+
   it('redirects the user gracefully when the entry does not exist', async () => {
     // The form renders with id that doesn't exist in Dexie. Since this is
     // a component-level concern (not routing), the form simply shows no

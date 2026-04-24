@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSessionJournalEntry } from '../hooks/useSessionJournalEntry';
+import { useAllTags } from '../hooks/useAllTags';
 import { Label } from '@lib/ui/components/label';
+import { TagInput } from '@lib/ui/components/tag-input';
+import { normalizeTagList } from '@lib/tags/normalizeTag';
 import { cn } from '@lib/ui/utils';
 import type { Mindset, SessionJournalEntry } from '@entities/journal-entry';
 import type { HyperJournalDb } from '@lib/storage/db';
@@ -17,6 +20,7 @@ type DraftState = {
   whatToAvoid: string;
   mindset: Mindset | null;
   disciplineScore: number | null;
+  tags: ReadonlyArray<string>;
 };
 
 type Status =
@@ -33,6 +37,7 @@ const EMPTY_DRAFT: DraftState = {
   whatToAvoid: '',
   mindset: null,
   disciplineScore: null,
+  tags: [],
 };
 
 const MINDSET_OPTIONS: ReadonlyArray<{ value: Mindset | ''; label: string }> = [
@@ -51,7 +56,8 @@ function isDraftEmpty(d: DraftState): boolean {
     d.whatToRepeat.trim() === '' &&
     d.whatToAvoid.trim() === '' &&
     d.mindset === null &&
-    d.disciplineScore === null
+    d.disciplineScore === null &&
+    d.tags.length === 0
   );
 }
 
@@ -64,6 +70,7 @@ function entryToDraft(entry: SessionJournalEntry | null): DraftState {
     whatToAvoid: entry.whatToAvoid,
     mindset: entry.mindset,
     disciplineScore: entry.disciplineScore,
+    tags: entry.tags ?? [],
   };
 }
 
@@ -76,6 +83,7 @@ function formatSavedAt(at: number): string {
 
 export function SessionJournalForm({ date, db }: Props) {
   const hook = useSessionJournalEntry(date, db ? { db } : {});
+  const allTags = useAllTags(db ? { db } : {});
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
@@ -110,7 +118,7 @@ export function SessionJournalForm({ date, db }: Props) {
       whatToAvoid: next.whatToAvoid,
       mindset: next.mindset,
       disciplineScore: next.disciplineScore,
-      tags: [], // placeholder until Task 5 adds Tags field to the draft
+      tags: normalizeTagList(next.tags),
       provenance: 'observed',
     };
     try {
@@ -134,6 +142,11 @@ export function SessionJournalForm({ date, db }: Props) {
   function onBlurCommit() {
     void commit(draftRef.current);
   }
+
+  const suggestions = useMemo(
+    () => allTags.tags.filter((t) => !draft.tags.includes(t)),
+    [allTags.tags, draft.tags],
+  );
 
   return (
     <section
@@ -196,6 +209,18 @@ export function SessionJournalForm({ date, db }: Props) {
           placeholder="What you did that you want to stop doing."
           rows={2}
           className={textareaClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="tags">Tags</Label>
+        <TagInput
+          id="tags"
+          value={draft.tags}
+          onChange={(v) => change('tags', v)}
+          onBlur={onBlurCommit}
+          suggestions={suggestions}
+          placeholder="Add tags, press Enter"
         />
       </div>
 
