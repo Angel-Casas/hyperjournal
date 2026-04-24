@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { TagChipList } from './TagChipList';
+import { TagChipList } from './tag-chip-list';
 
 afterEach(() => cleanup());
 

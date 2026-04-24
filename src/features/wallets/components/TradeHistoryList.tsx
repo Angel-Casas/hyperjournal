@@ -5,8 +5,10 @@ import type { ReconstructedTrade } from '@entities/trade';
 import type { WalletAddress } from '@entities/wallet';
 import { formatCurrency, formatHoldTime } from '@lib/ui/format';
 import { cn } from '@lib/ui/utils';
+import { TagChipList } from '@lib/ui/components/tag-chip-list';
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
+const EMPTY_TAGS_MAP: ReadonlyMap<string, ReadonlyArray<string>> = new Map();
 
 type Props = {
   trades: ReadonlyArray<ReconstructedTrade>;
@@ -18,12 +20,17 @@ type Props = {
    * boundaries rule. Defaults to an empty set.
    */
   tradeIdsWithNotes?: ReadonlySet<string>;
+  /**
+   * Map of tradeId → tag array. Same boundary rationale as
+   * tradeIdsWithNotes. Defaults to an empty map.
+   */
+  tradeTagsByTradeId?: ReadonlyMap<string, ReadonlyArray<string>>;
 };
 
 const ROW_HEIGHT = 40;
 const VIEWPORT_HEIGHT = 300;
 const GRID_COLUMNS =
-  'grid-cols-[minmax(80px,1fr)_70px_minmax(120px,1fr)_80px_minmax(100px,1fr)_80px]';
+  'grid-cols-[minmax(80px,1fr)_70px_minmax(120px,1fr)_80px_minmax(100px,1fr)_80px_minmax(80px,1fr)]';
 
 function formatDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -33,6 +40,7 @@ export function TradeHistoryList({
   trades,
   address,
   tradeIdsWithNotes = EMPTY_IDS,
+  tradeTagsByTradeId = EMPTY_TAGS_MAP,
 }: Props) {
   const sorted = useMemo(
     () =>
@@ -87,6 +95,7 @@ export function TradeHistoryList({
             <div role="columnheader" className="text-right">
               Held
             </div>
+            <div role="columnheader">Tags</div>
           </div>
         </div>
         <div ref={parentRef} className="overflow-auto" style={{ height: VIEWPORT_HEIGHT }}>
@@ -148,6 +157,9 @@ export function TradeHistoryList({
                   </div>
                   <div role="cell" className="text-right font-mono text-fg-muted">
                     {t.status === 'open' ? '—' : formatHoldTime(t.holdTimeMs)}
+                  </div>
+                  <div role="cell" className="overflow-hidden">
+                    <TagChipList tags={tradeTagsByTradeId.get(t.id) ?? []} max={2} />
                   </div>
                 </Link>
               );

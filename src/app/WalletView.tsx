@@ -12,7 +12,7 @@ import {
   WalletHeader,
   WalletMetricsGrid,
 } from '@features/wallets';
-import { useJournalEntryIds } from '@features/journal';
+import { useJournalEntryIds, useJournalTagsByTradeId } from '@features/journal';
 import { Button } from '@lib/ui/components/button';
 import type { WalletAddress } from '@entities/wallet';
 
@@ -74,6 +74,7 @@ export function WalletView() {
 function WalletViewInner({ address }: { address: WalletAddress }) {
   const metrics = useWalletMetrics(address);
   const { ids: tradeIdsWithNotes } = useJournalEntryIds();
+  const { tagsByTradeId } = useJournalTagsByTradeId();
   const { save } = useSavedWallets();
 
   useEffect(() => {
@@ -134,6 +135,7 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
             trades={metrics.trades}
             address={address}
             tradeIdsWithNotes={tradeIdsWithNotes}
+            tradeTagsByTradeId={tagsByTradeId}
           />
         </>
       )}

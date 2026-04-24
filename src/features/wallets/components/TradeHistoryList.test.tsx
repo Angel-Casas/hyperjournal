@@ -90,4 +90,23 @@ describe('TradeHistoryList', () => {
     expect(screen.getByRole('heading', { name: /trade history/i })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
   });
+
+  it('accepts the tradeTagsByTradeId prop and renders without crashing', () => {
+    const tagsByTradeId = new Map<string, ReadonlyArray<string>>([
+      ['BTC-1', ['breakout', 'fomc']],
+    ]);
+    render(
+      wrap(
+        <TradeHistoryList
+          trades={[makeTrade({ id: 'BTC-1', coin: 'BTC' })]}
+          address={ADDR}
+          tradeTagsByTradeId={tagsByTradeId}
+        />,
+      ),
+    );
+    // Smoke: body rows don't render in jsdom (virtualizer geometry), so
+    // we only check the component accepts the prop shape + the table
+    // landmark still mounts. E2E covers on-screen chip rendering.
+    expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
+  });
 });

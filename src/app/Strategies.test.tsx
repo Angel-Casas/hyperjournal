@@ -57,14 +57,15 @@ describe('Strategies', () => {
       examples: '',
       recurringMistakes: '',
       notes: '',
-      tags: [],
+      tags: ['breakout', 'momentum'],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);
     renderAt();
-    await waitFor(() => expect(screen.getByText(/breakout/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Breakout')).toBeInTheDocument());
     expect(screen.getByText(/clear resistance break/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /breakout/i })).toHaveAttribute('href', '/s/abc');
+    expect(screen.getByText('momentum')).toBeInTheDocument();
   });
 
   it('shows an inline error when submitting an empty name', async () => {

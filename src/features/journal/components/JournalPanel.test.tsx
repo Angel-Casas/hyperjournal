@@ -58,7 +58,7 @@ describe('JournalPanel', () => {
       whatToAvoid: '',
       mindset: null,
       disciplineScore: null,
-      tags: [],
+      tags: ['fomc'],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);
@@ -68,6 +68,7 @@ describe('JournalPanel', () => {
     });
     const link = screen.getByRole('link', { name: /short teaser/i });
     expect(link).toHaveAttribute('href', '/d/2026-04-20');
+    expect(screen.getByText('fomc')).toBeInTheDocument();
   });
 
   it('renders a "Strategies →" link to /strategies', () => {

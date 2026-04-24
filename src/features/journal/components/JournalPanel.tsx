@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useRecentSessionEntries } from '../hooks/useRecentSessionEntries';
 import { todayUtcDateString } from '@domain/dates/todayUtcDateString';
 import { Button } from '@lib/ui/components/button';
+import { TagChipList } from '@lib/ui/components/tag-chip-list';
 import type { HyperJournalDb } from '@lib/storage/db';
 import type { SessionJournalEntry } from '@entities/journal-entry';
 
@@ -55,6 +56,7 @@ export function JournalPanel({ db, now }: Props) {
                   {formatShortDate(e.date)}
                 </span>
                 <span className="line-clamp-1 text-fg-base">{teaser(e)}</span>
+                <TagChipList tags={e.tags ?? []} max={3} />
               </Link>
             </li>
           ))}

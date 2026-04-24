@@ -12,4 +12,3 @@ export { useStrategies } from './hooks/useStrategies';
 export { useCreateStrategy } from './hooks/useCreateStrategy';
 export { useAllTags } from './hooks/useAllTags';
 export { useJournalTagsByTradeId } from './hooks/useJournalTagsByTradeId';
-export { TagChipList } from './components/TagChipList';

@@ -4,6 +4,7 @@ import { useCreateStrategy, useStrategies } from '@features/journal';
 import { Button } from '@lib/ui/components/button';
 import { Input } from '@lib/ui/components/input';
 import { Label } from '@lib/ui/components/label';
+import { TagChipList } from '@lib/ui/components/tag-chip-list';
 import type { HyperJournalDb } from '@lib/storage/db';
 import type { StrategyJournalEntry } from '@entities/journal-entry';
 
@@ -108,6 +109,7 @@ export function Strategies({ db }: Props) {
                     Updated {formatShortDate(e.updatedAt)}
                   </span>
                   <span className="line-clamp-1 text-fg-base">{teaser(e)}</span>
+                  <TagChipList tags={e.tags ?? []} max={3} />
                 </Link>
               </li>
             ))}
