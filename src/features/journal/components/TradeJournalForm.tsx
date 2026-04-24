@@ -130,6 +130,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
       planFollowed: next.planFollowed,
       stopLossUsed: next.stopLossUsed,
       strategyId: next.strategyId,
+      tags: [], // placeholder until Task 4 adds Tags field to the draft
       provenance: 'observed',
     };
     try {

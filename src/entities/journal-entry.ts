@@ -48,6 +48,14 @@ export type TradeJournalEntry = {
    */
   readonly strategyId: string | null;
 
+  /**
+   * Free-form labels attached to this entry. Introduced in Session 7e.
+   * Normalized (lowercase + trim + whitespace-collapsed) on save; see
+   * `@domain/tags/normalizeTag`. Pre-7e rows may carry `undefined`;
+   * consumers treat `undefined` as `[]`.
+   */
+  readonly tags: ReadonlyArray<string>;
+
   readonly provenance: Provenance;
 };
 
@@ -70,6 +78,12 @@ export type SessionJournalEntry = {
 
   readonly mindset: Mindset | null;
   readonly disciplineScore: number | null; // 1-5
+
+  /**
+   * Free-form labels attached to this entry. Same pool as trade/strategy
+   * tags. See `@domain/tags/normalizeTag`.
+   */
+  readonly tags: ReadonlyArray<string>;
 
   readonly provenance: Provenance;
 };
@@ -97,6 +111,12 @@ export type StrategyJournalEntry = {
   readonly examples: string;
   readonly recurringMistakes: string;
   readonly notes: string;
+
+  /**
+   * Free-form labels attached to this strategy. Same pool as trade and
+   * session tags. See `@domain/tags/normalizeTag`.
+   */
+  readonly tags: ReadonlyArray<string>;
 
   readonly provenance: Provenance;
 };

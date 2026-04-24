@@ -37,6 +37,7 @@ export function useCreateStrategy(options: Options = {}): UseCreateStrategyResul
         examples: '',
         recurringMistakes: '',
         notes: '',
+        tags: [],
         provenance: 'observed',
       };
       await repo.upsert(entry);

@@ -19,6 +19,7 @@ async function seedStrategy(
     examples: '',
     recurringMistakes: '',
     notes: '',
+    tags: [],
     provenance: 'observed',
     ...overrides,
   };
@@ -71,6 +72,7 @@ describe('TradeJournalForm', () => {
       planFollowed: null,
       stopLossUsed: null,
       strategyId: null,
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);
@@ -200,6 +202,7 @@ describe('TradeJournalForm', () => {
       planFollowed: null,
       stopLossUsed: null,
       strategyId: 's-a',
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(existing);
@@ -232,6 +235,7 @@ describe('TradeJournalForm', () => {
       planFollowed: null,
       stopLossUsed: null,
       strategyId: 'gone',
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(existing);

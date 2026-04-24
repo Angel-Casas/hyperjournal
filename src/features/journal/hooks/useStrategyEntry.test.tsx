@@ -37,6 +37,7 @@ function makeEntry(overrides: Partial<StrategyJournalEntry> = {}): StrategyJourn
     examples: '',
     recurringMistakes: '',
     notes: '',
+    tags: [],
     provenance: 'observed',
     ...overrides,
   };

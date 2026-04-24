@@ -322,6 +322,123 @@ describe('ExportFileSchema', () => {
     expect(first.strategyId).toBeNull();
   });
 
+  it('parses a trade entry with tags', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: '',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            strategyId: null,
+            tags: ['breakout', 'fomc'],
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'trade') throw new Error('expected trade');
+    expect(first.tags).toEqual(['breakout', 'fomc']);
+  });
+
+  it('parses a session entry with an empty tags array', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 's1',
+            scope: 'session',
+            date: '2026-04-24',
+            createdAt: 1,
+            updatedAt: 1,
+            marketConditions: '',
+            summary: '',
+            whatToRepeat: '',
+            whatToAvoid: '',
+            mindset: null,
+            disciplineScore: null,
+            tags: [],
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const first = out.data.journalEntries![0]!;
+    if (first.scope !== 'session') throw new Error('expected session');
+    expect(first.tags).toEqual([]);
+  });
+
+  it('defaults tags to [] across all three variants when the field is missing (pre-7e export)', () => {
+    const out = ExportFileSchema.parse({
+      ...validFile,
+      data: {
+        ...validFile.data,
+        journalEntries: [
+          {
+            id: 'e1',
+            scope: 'trade',
+            tradeId: 'BTC-1',
+            createdAt: 1,
+            updatedAt: 1,
+            preTradeThesis: '',
+            postTradeReview: '',
+            lessonLearned: '',
+            mood: null,
+            planFollowed: null,
+            stopLossUsed: null,
+            strategyId: null,
+            provenance: 'observed',
+          },
+          {
+            id: 's1',
+            scope: 'session',
+            date: '2026-04-24',
+            createdAt: 1,
+            updatedAt: 1,
+            marketConditions: '',
+            summary: '',
+            whatToRepeat: '',
+            whatToAvoid: '',
+            mindset: null,
+            disciplineScore: null,
+            provenance: 'observed',
+          },
+          {
+            id: 'st1',
+            scope: 'strategy',
+            createdAt: 1,
+            updatedAt: 1,
+            name: '',
+            conditions: '',
+            invalidation: '',
+            idealRR: '',
+            examples: '',
+            recurringMistakes: '',
+            notes: '',
+            provenance: 'observed',
+          },
+        ],
+      },
+    });
+    const entries = out.data.journalEntries!;
+    expect(entries[0]!.tags).toEqual([]);
+    expect(entries[1]!.tags).toEqual([]);
+    expect(entries[2]!.tags).toEqual([]);
+  });
+
   it('rejects a journalEntries row with an invalid scope', () => {
     expect(() =>
       ExportFileSchema.parse({

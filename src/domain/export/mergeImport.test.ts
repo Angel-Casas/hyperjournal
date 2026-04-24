@@ -142,6 +142,7 @@ describe('mergeImport', () => {
             planFollowed: null,
             stopLossUsed: null,
             strategyId: null,
+            tags: [],
             provenance: 'observed',
           },
         ],

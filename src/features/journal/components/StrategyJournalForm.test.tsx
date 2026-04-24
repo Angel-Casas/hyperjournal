@@ -30,6 +30,7 @@ async function seed(entry: Partial<StrategyJournalEntry>) {
     examples: '',
     recurringMistakes: '',
     notes: '',
+    tags: [],
     provenance: 'observed',
     ...entry,
   };

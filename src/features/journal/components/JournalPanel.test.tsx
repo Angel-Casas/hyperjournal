@@ -58,6 +58,7 @@ describe('JournalPanel', () => {
       whatToAvoid: '',
       mindset: null,
       disciplineScore: null,
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

@@ -106,6 +106,7 @@ export function StrategyJournalForm({ id, db }: Props) {
       examples: next.examples,
       recurringMistakes: next.recurringMistakes,
       notes: next.notes,
+      tags: [], // placeholder until Task 5 adds Tags field to the draft
       provenance: 'observed',
     };
     try {

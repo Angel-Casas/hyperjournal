@@ -72,6 +72,7 @@ const TradeJournalEntrySchema = z.object({
   planFollowed: z.boolean().nullable(),
   stopLossUsed: z.boolean().nullable(),
   strategyId: z.string().min(1).nullable().default(null),
+  tags: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
@@ -87,6 +88,7 @@ const SessionJournalEntrySchema = z.object({
   whatToAvoid: z.string(),
   mindset: MindsetSchema,
   disciplineScore: z.number().int().min(1).max(5).nullable(),
+  tags: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
@@ -102,6 +104,7 @@ const StrategyJournalEntrySchema = z.object({
   examples: z.string(),
   recurringMistakes: z.string(),
   notes: z.string(),
+  tags: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 

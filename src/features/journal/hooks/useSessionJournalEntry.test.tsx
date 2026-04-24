@@ -37,6 +37,7 @@ function makeEntry(overrides: Partial<SessionJournalEntry> = {}): SessionJournal
     whatToAvoid: '',
     mindset: null,
     disciplineScore: null,
+    tags: [],
     provenance: 'observed',
     ...overrides,
   };

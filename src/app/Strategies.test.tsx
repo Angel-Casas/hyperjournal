@@ -57,6 +57,7 @@ describe('Strategies', () => {
       examples: '',
       recurringMistakes: '',
       notes: '',
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

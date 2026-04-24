@@ -45,6 +45,7 @@ describe('useJournalEntryIds', () => {
       planFollowed: null,
       stopLossUsed: null,
       strategyId: null,
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

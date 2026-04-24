@@ -50,6 +50,7 @@ describe('SessionJournalForm', () => {
       whatToAvoid: '',
       mindset: 'focused',
       disciplineScore: 4,
+      tags: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

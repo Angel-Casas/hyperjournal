@@ -110,6 +110,7 @@ export function SessionJournalForm({ date, db }: Props) {
       whatToAvoid: next.whatToAvoid,
       mindset: next.mindset,
       disciplineScore: next.disciplineScore,
+      tags: [], // placeholder until Task 5 adds Tags field to the draft
       provenance: 'observed',
     };
     try {

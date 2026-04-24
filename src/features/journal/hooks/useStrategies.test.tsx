@@ -37,6 +37,7 @@ function makeStrategy(overrides: Partial<StrategyJournalEntry>): StrategyJournal
     examples: '',
     recurringMistakes: '',
     notes: '',
+    tags: [],
     provenance: 'observed',
     ...overrides,
   };
