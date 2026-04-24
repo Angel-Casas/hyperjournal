@@ -605,3 +605,54 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Strategy names may be blank; UI renders `"Untitled"` but storage preserves `""` — same convention as `/strategies` and `/s/:id`.
 
 ---
+
+## 2026-04-24 — Phase 1 Session 7e: Tags
+
+**Session goal:** Add free-form tags to every journal variant. Build a reusable chip-input primitive; display tag chips on existing read surfaces. Split from the original combined "7d — Tags + linking" BACKLOG entry (7d shipped linking).
+
+**Done:**
+
+- `tags: ReadonlyArray<string>` added to `TradeJournalEntry`, `SessionJournalEntry`, `StrategyJournalEntry`. No Dexie schema bump — row value only; pre-7e rows coerce via `entry.tags ?? []` and self-heal on next upsert.
+- `@lib/tags/normalizeTag` — pure `normalizeTag` + `normalizeTagList` helpers (lowercase, trim, whitespace-collapse, 40-char cap, dedupe). [+7 tests]
+- Zod `.default([])` on all three variant schemas; `formatVersion` unchanged. Pre-7e export files parse cleanly. [+3 validation cases]
+- `TagInput` primitive (`@lib/ui/components/tag-input`) — accessible combobox-style chip input with keyboard autocomplete. Enter/comma commits; Backspace-in-empty removes last; X on chip removes; Arrow-key nav; Escape clears; blur commits pending then calls parent onBlur in order. [+7 tests]
+- `useAllTags` hook — pooled across all three variants, dedupes + sorts. Invalidated by all three save hooks. [+2 tests]
+- `useJournalTagsByTradeId` hook — `ReadonlyMap<tradeId, tags>` for trade-scope rows; threads across the wallets→journal feature boundary without import cycles. [+2 tests]
+- All three form components wired: TagInput below domain-specific fields (above tri-state radios in Trade; below whatToAvoid in Session; bottom of form in Strategy). `isDraftEmpty` extended; `commit` re-normalizes via `normalizeTagList`. [+2 tests per form = 6 total]
+- `TagChipList` read-only primitive (`@lib/ui/components/tag-chip-list`) — max N chips + "+N more" overflow. Originally placed in features/journal per the spec, relocated to lib/ui during implementation because TradeHistoryList couldn't import from a sibling feature per the boundaries rule. [+3 tests]
+- Three read surfaces integrated:
+  - `TradeHistoryList`: new "Tags" grid column (far right), max=2 due to virtualized fixed-row-height constraint; threaded via `tradeTagsByTradeId` prop from `WalletView`. +1 smoke test (virtualized body rows don't render in jsdom; E2E covers on-screen chip rendering).
+  - `/strategies` list rows: max=3 chips below the teaser. +1 test.
+  - `JournalPanel` session rows: max=3 chips below the teaser. +1 test.
+- Playwright: `e2e/tags-roundtrip.spec.ts` — trade round-trip + cross-variant autocomplete. [+2 E2E]
+- End state: **360** unit tests, **13** E2E tests, gauntlet + build green, domain coverage ≥ 90%.
+
+**Decisions made:** none (no new ADRs). One architecture deviation from the spec (TagChipList location) noted inline above.
+
+**Deferred / not done:**
+
+- **Tag filter** on list surfaces — not in 7e; BACKLOG. Adds multi-tag AND vs OR semantics, filter-control placement, composition with existing filters.
+- **Tag management UI** (rename / merge / archive) — BACKLOG.
+- **Multi-entry `*tags` Dexie index** — not in 7e; needed when tag-filtering at scale lands.
+- **Tag-usage counts in autocomplete** — BACKLOG polish.
+- **Paste-comma-separated bulk entry** — BACKLOG small item.
+- **Screenshots** — Session 7f.
+
+**Gotchas for next session:**
+
+- `normalizeTag` is in `@lib/tags/`, NOT `@domain/tags/` (spec had the latter). Moved during implementation because `lib/` can't import from `domain/` per CLAUDE.md §3 rule 7. Tag normalization is pure string manipulation — fits `lib/` semantically.
+- `TagChipList` is in `@lib/ui/components/tag-chip-list`, NOT `@features/journal/components/`. Relocated mid-implementation so `features/wallets` (TradeHistoryList) could import it directly without a feature-boundary violation.
+- `TagInput` suggestions dropdown uses `onMouseDown` to commit (mousedown fires before blur). If anything ever adds click-outside handling, be careful to exclude the listbox from the "outside" detection.
+- `useJournalTagsByTradeId` invalidation is wired ONLY on trade-journal save/remove. Session + strategy saves don't invalidate it (they don't affect the trade map). If a future refactor changes scope membership post-save, revisit.
+- Pre-7e rows in storage lack `tags` entirely. `entry.tags ?? []` handles read-time; next save writes `[]` explicitly. Export files written before 7e default via Zod.
+- `TradeHistoryList` grid now has 7 columns (`GRID_COLUMNS` constant). Any future column adds need to update the same constant + the header row's `<div role="columnheader">` list.
+- Virtualized list body rows don't render in jsdom (react-virtual needs real scroll geometry). Component tests for TradeHistoryList stay smoke-only; E2E covers chip rendering.
+- The `Strategies.test.tsx` assertion for the strategy name uses `getByText('Breakout')` (exact, case-sensitive) because the test fixture carries a `breakout` tag — the old case-insensitive regex matched both the name and the chip.
+
+**Invariants assumed:**
+
+- Tag strings in storage are ALWAYS normalized (lowercased, trimmed, whitespace-collapsed). Inbound import doesn't re-normalize — but the first form save re-normalizes via `normalizeTagList`. Lossy-forward: hand-edited imports are treated kindly.
+- Tag dedup is case-insensitive via normalization; storage never carries both "Breakout" and "breakout" as distinct tags.
+- Empty `tags: []` is always the fallback — never null, never undefined in the final TypeScript type (even if Dexie storage has undefined from pre-7e rows).
+
+---

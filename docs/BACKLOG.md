@@ -165,7 +165,7 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 
 ## Session 7c deferrals
 
-- `[next]` Tags — Session 7e. `tags: string[]` on all journal variants (trade, session, strategy). Chip-input component, denormalized storage, strict-normalize on save (lowercase + trim). Screenshots shift to Session 7f.
+- `[next]` Screenshots/images — Session 7f. IndexedDB blob storage.
 - `[next]` Screenshots/images — Session 7e. IndexedDB blob storage.
 - `[maybe]` Strategy delete. Soft (archive) or hard with confirmation dialog. Depends on which BACKLOG item above (archive/status) lands first.
 - `[maybe]` Strategy archive/status. Active / retired / paused. Filter on the list.
@@ -185,3 +185,16 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` `strategyIds: string[]` widening. One strategy per trade covers Phase 1; revisit if users report trades fitting multiple setups simultaneously.
 - `[maybe]` UUID-format validation on `strategyId` (Zod `.uuid()`). Makes test fixtures brittle for zero gain today; wait for a real reason.
 - `[maybe]` Bulk strategy-linking from the trade-history list (right-click a trade → pick strategy). Keyboard-heavy users would want it; most users won't.
+
+---
+
+## Session 7e deferrals
+
+- `[next]` Screenshots — Session 7f.
+- `[maybe]` Tag filtering on list surfaces. Multi-tag AND vs OR semantics, filter-control UX (chip-strip vs dropdown vs search bar), composition with existing filters. Real design work; own session.
+- `[maybe]` Tag management UI — rename, merge, archive. Phase 1 data volumes make find-and-replace practical; revisit when a user reports confused vocabulary.
+- `[maybe]` `*tags` Dexie multiEntry index. Needed when tag-filter or tag-count reach enough data volume to matter.
+- `[maybe]` Tag-usage counts in autocomplete dropdown ("breakout (used 7×)"). Useful past ~50 tags.
+- `[maybe]` Paste-comma-separated bulk entry — `"breakout, fomc, macro"` in a single paste fans out to three chips.
+- `[maybe]` Tag-color customization. Currently all chips are neutral; custom color-per-tag is product-identity work deserving its own design.
+- `[maybe]` Click-outside-to-close on the `TagInput` suggestion dropdown. Blur already closes it; click-outside matters only if the dropdown needs to survive blur (it doesn't today).
