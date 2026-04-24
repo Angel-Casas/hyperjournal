@@ -165,12 +165,23 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 
 ## Session 7c deferrals
 
-- `[next]` Tags + trade↔strategy linking — Session 7d. `tags: string[]` on all journal variants; trades reference strategies by id. Autocomplete from existing tags. Normalization decisions (case sensitivity, whitespace).
+- `[next]` Tags — Session 7e. `tags: string[]` on all journal variants (trade, session, strategy). Chip-input component, denormalized storage, strict-normalize on save (lowercase + trim). Screenshots shift to Session 7f.
 - `[next]` Screenshots/images — Session 7e. IndexedDB blob storage.
 - `[maybe]` Strategy delete. Soft (archive) or hard with confirmation dialog. Depends on which BACKLOG item above (archive/status) lands first.
 - `[maybe]` Strategy archive/status. Active / retired / paused. Filter on the list.
-- `[maybe]` Per-strategy analytics on `/w/:address` (e.g., win rate of trades tagged with strategy X). Blocked on tags + trade↔strategy linking.
+- `[maybe]` Per-strategy analytics on `/w/:address` (e.g., win rate of trades linked to strategy X). Unblocked after Session 7d; depends on having enough linked trades to be meaningful.
 - `[maybe]` Duplicate-name warnings. Soft UX nudge when creating a strategy with an existing name.
 - `[maybe]` Reorder strategies. Drag-to-reorder on `/strategies`; needs a per-row `sortKey` or an explicit ordering array.
 - `[maybe]` Full-text search across strategy content. Once a user has 10+ strategies, finding "the one with invalidation below 200-day MA" by memory gets slow.
 - `[maybe]` Strategy-specific templates. Preset strategies (breakout, mean-reversion, trend-follow) that the user can clone with pre-filled conditions.
+
+---
+
+## Session 7d deferrals
+
+- `[next]` Tags (see above, now Session 7e).
+- `[maybe]` Reverse-lookup list of "trades linked to this strategy" on `/s/:id`. Design-blocked until tags land (picker vs filter UX interacts with tag filtering). Small implementation but wants the right home.
+- `[maybe]` Strategy deletion UI. Current orphan UX (graceful chip-hide + "— deleted strategy" picker option) is ready for it; need a confirmation dialog and a decision on soft-archive vs hard-delete.
+- `[maybe]` `strategyIds: string[]` widening. One strategy per trade covers Phase 1; revisit if users report trades fitting multiple setups simultaneously.
+- `[maybe]` UUID-format validation on `strategyId` (Zod `.uuid()`). Makes test fixtures brittle for zero gain today; wait for a real reason.
+- `[maybe]` Bulk strategy-linking from the trade-history list (right-click a trade → pick strategy). Keyboard-heavy users would want it; most users won't.

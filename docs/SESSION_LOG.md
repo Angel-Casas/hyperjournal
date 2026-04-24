@@ -563,3 +563,45 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Blank names are valid data; the UI renders "Untitled" visually but preserves `""` in storage.
 
 ---
+
+## 2026-04-23 — Phase 1 Session 7d: Trade ↔ strategy link
+
+**Session goal:** Let the user link a trade journal entry to one of their strategies. First concrete payoff from Session 7c's strategy scope. Split from the original combined "7d — Tags + linking" scope; tags now live in Session 7e, screenshots in 7f.
+
+**Done:**
+
+- `TradeJournalEntry` gains `strategyId: string | null`. No Dexie schema bump — row value only; pre-7d rows load with `undefined` and self-heal on next upsert.
+- Zod `TradeJournalEntrySchema` extended with `strategyId: z.string().min(1).nullable().default(null)` for backwards-compat with pre-7d export files. `formatVersion` unchanged at 1. [+3 validation cases]
+- `TradeJournalForm` gains an inline native `<select>` picker driven by `useStrategies`. Matches the `mood`-select pattern: `onChange` marks draft dirty, `onBlur` commits. Blank-name strategies render as "Untitled". Zero-strategy state shows a helper line linking to `/strategies`. Orphaned stored ids render as a `"— deleted strategy"` option that vanishes once any real value is chosen. [+5 form tests]
+- `TradeDetail` gains an optional `db` prop (matches Strategies/StrategyDetail) and composes `useTradeJournalEntry` + `useStrategies` to resolve the current strategy. When the id resolves to an existing row, a small `"Strategy: <name> →"` chip renders in the header next to the side/status badges, linking to `/s/:id`. Orphaned ids — no chip. [+4 detail tests]
+- `TradeDetail.test.tsx` rewritten to use `vi.mock('@features/wallets')` so the chip tests can inject a synthetic `ReconstructedTrade` without going through fetch + reconstruction; the two existing routing tests migrated to the same pattern for consistency.
+- Also: `strategyId: null` backfilled in existing trade-entry literal constructions across buildExport / mergeImport / export-repo / import-repo / useJournalEntryIds / useTradeJournalEntry tests. Plan scope missed these; fix landed in the same Task 1+2 commit.
+- Playwright: `e2e/trade-strategy-link.spec.ts` — two tests (create→link→persist→navigate; unlink→reload). [+2 E2E tests]
+- End state: **329** unit tests, **11** E2E tests, gauntlet clean, domain coverage ≥ 90%.
+
+**Decisions made:** none (no new ADRs).
+
+**Deferred / not done:**
+
+- Tags (cross-cutting on all three variants) — Session 7e.
+- Screenshots — Session 7f.
+- Reverse-lookup "trades linked to this strategy" on `StrategyDetail` — BACKLOG.
+- Per-strategy analytics — BACKLOG; unblocks now that linking exists.
+- Strategy deletion + orphan cleanup — BACKLOG; current orphan behaviour is graceful-hide / "— deleted strategy" picker option.
+
+**Gotchas for next session:**
+
+- `TradeJournalEntry.strategyId` is required on the entity but may be `undefined` in pre-7d Dexie rows. Consumers must coerce: `entry.strategyId ?? null`. The form already does this via `entryToDraft`; any new consumer needs the same guard until all existing rows have round-tripped through at least one upsert.
+- The Zod `.default(null)` path only fires for missing fields. If an import file carries `strategyId: undefined` explicitly, Zod treats that as `null` via the default — matching intent.
+- `TradeDetail` now depends on `useStrategies`. The call is unconditional; on pages without strategies, it returns an empty array (cheap). No conditional hook calls; React's rules-of-hooks stay happy.
+- The `"— deleted strategy"` option is rendered conditionally inside the picker. If the conditional render order ever changes (e.g., the orphan check moves below the `entries.map`), `<select>.value` could briefly point at an option that doesn't yet exist during the render pass — keep the orphan option rendered before the mapped strategies.
+- **Playwright `Locator.blur()` is unreliable for React onBlur** — `<select>.blur()` dispatches a native blur event, but React's synthetic event delegation doesn't always catch it. The E2E uses `picker.press('Tab')` to move focus naturally. Session 7e's tag-input blur-commits will hit the same issue — use Tab there too.
+- Plan missed 6 peripheral test files that construct `TradeJournalEntry` literals. Adding the new field required `strategyId: null` everywhere. Future sessions that add a new required field to an existing journal variant: `grep -l "scope: 'trade'" src/` before estimating task count.
+
+**Invariants assumed:**
+
+- `strategyId` values are UUIDs produced by `useCreateStrategy` (`crypto.randomUUID()`). The schema doesn't validate UUID format; the `.min(1)` guard is enough.
+- At most one strategy per trade in Phase 1. Widening to `strategyIds: string[]` later is additive.
+- Strategy names may be blank; UI renders `"Untitled"` but storage preserves `""` — same convention as `/strategies` and `/s/:id`.
+
+---
