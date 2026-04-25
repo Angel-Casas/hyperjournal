@@ -31,11 +31,7 @@ export function createImportRepo(db: HyperJournalDb): ImportRepo {
 
       await db.transaction(
         'rw',
-        db.wallets,
-        db.userSettings,
-        db.fillsCache,
-        db.journalEntries,
-        db.images,
+        [db.wallets, db.userSettings, db.fillsCache, db.journalEntries, db.images],
         async () => {
           if (result.walletsToUpsert.length > 0) {
             await db.wallets.bulkPut(result.walletsToUpsert.slice());
