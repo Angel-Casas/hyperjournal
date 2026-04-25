@@ -215,3 +215,57 @@ describe('createJournalEntriesRepo', () => {
     expect((await repo.listAllTradeIds()).size).toBe(0);
   });
 });
+
+describe('cascade delete (Session 7f)', () => {
+  it('removes the entry and its imageIds in one transaction', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await db.images.bulkPut([
+      {
+        id: 'img-a',
+        blob: new Blob([new Uint8Array([1])], { type: 'image/png' }),
+        mime: 'image/png',
+        width: 1,
+        height: 1,
+        bytes: 1,
+        createdAt: 0,
+        provenance: 'observed',
+      },
+      {
+        id: 'img-b',
+        blob: new Blob([new Uint8Array([2])], { type: 'image/png' }),
+        mime: 'image/png',
+        width: 1,
+        height: 1,
+        bytes: 1,
+        createdAt: 0,
+        provenance: 'observed',
+      },
+    ]);
+
+    await repo.upsert(makeTradeEntry({ id: 'e1', imageIds: ['img-a', 'img-b'] }));
+    await repo.remove('e1');
+
+    expect(await db.images.get('img-a')).toBeUndefined();
+    expect(await db.images.get('img-b')).toBeUndefined();
+    expect(await db.journalEntries.get('e1')).toBeUndefined();
+  });
+
+  it('does not throw when an imageId references a missing image row', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeTradeEntry({ id: 'e2', imageIds: ['missing'] }));
+    await expect(repo.remove('e2')).resolves.toBeUndefined();
+  });
+
+  it('handles entries with empty imageIds array', async () => {
+    const repo = createJournalEntriesRepo(db);
+    await repo.upsert(makeTradeEntry({ id: 'e3', imageIds: [] }));
+    await expect(repo.remove('e3')).resolves.toBeUndefined();
+  });
+
+  it('handles pre-7f entries lacking imageIds entirely', async () => {
+    const repo = createJournalEntriesRepo(db);
+    // makeTradeEntry doesn't include imageIds; the helper relies on `as JournalEntry`.
+    await repo.upsert(makeTradeEntry({ id: 'e4' }));
+    await expect(repo.remove('e4')).resolves.toBeUndefined();
+  });
+});

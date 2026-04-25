@@ -52,7 +52,16 @@ export function createJournalEntriesRepo(db: HyperJournalDb): JournalEntriesRepo
       await db.journalEntries.put(entry);
     },
     async remove(id) {
-      await db.journalEntries.delete(id);
+      // Cascade delete: also remove the entry's attached images.
+      // Single transaction so an orphan ref can't be left behind.
+      await db.transaction('rw', db.journalEntries, db.images, async () => {
+        const entry = await db.journalEntries.get(id);
+        const imageIds = entry?.imageIds ?? [];
+        await db.journalEntries.delete(id);
+        if (imageIds.length > 0) {
+          await db.images.bulkDelete([...imageIds]);
+        }
+      });
     },
     async listAll() {
       return db.journalEntries.toArray();
