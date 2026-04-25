@@ -309,8 +309,11 @@ describe('image attachments (Session 7f)', () => {
         .where('tradeId')
         .equals('BTC-1')
         .first();
-      expect(stored?.postTradeReview).toBe('unsaved text');
-      expect(stored?.imageIds).toHaveLength(1);
+      if (!stored || stored.scope !== 'trade') {
+        throw new Error('expected a trade entry');
+      }
+      expect(stored.postTradeReview).toBe('unsaved text');
+      expect(stored.imageIds).toHaveLength(1);
     });
   });
 
