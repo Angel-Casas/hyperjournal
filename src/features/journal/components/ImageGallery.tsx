@@ -24,7 +24,7 @@ export function ImageGallery({ imageIds, onRemove, db }: Props) {
 type ThumbnailProps = {
   id: string;
   onRemove: (id: string) => void;
-  db?: HyperJournalDb;
+  db?: HyperJournalDb | undefined;
 };
 
 function Thumbnail({ id, onRemove, db }: ThumbnailProps) {

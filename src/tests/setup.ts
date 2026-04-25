@@ -14,6 +14,26 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   } as typeof ResizeObserver;
 }
 
+// jsdom's URL doesn't implement createObjectURL/revokeObjectURL. Stub
+// once globally so any spyOn(URL, ...) has something to replace and any
+// component that calls these methods directly gets a non-throwing path.
+// Factored from ExportPanel.test.tsx in Session 7f (third Blob-using
+// component triggered DRY per the 7c BACKLOG entry).
+if (!('createObjectURL' in URL)) {
+  Object.defineProperty(URL, 'createObjectURL', {
+    value: () => 'blob:stub',
+    writable: true,
+    configurable: true,
+  });
+}
+if (!('revokeObjectURL' in URL)) {
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    value: () => {},
+    writable: true,
+    configurable: true,
+  });
+}
+
 afterEach(() => {
   cleanup();
 });

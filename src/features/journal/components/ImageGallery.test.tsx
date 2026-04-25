@@ -19,16 +19,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(async () => {
   db = new HyperJournalDb(`hj-gallery-${Math.random().toString(36).slice(2)}`);
   await db.open();
-  Object.defineProperty(URL, 'createObjectURL', {
-    value: () => 'blob:fake',
-    writable: true,
-    configurable: true,
-  });
-  Object.defineProperty(URL, 'revokeObjectURL', {
-    value: () => {},
-    writable: true,
-    configurable: true,
-  });
+  // URL.createObjectURL / revokeObjectURL stubs live in src/tests/setup.ts.
 });
 
 afterEach(async () => {
@@ -51,10 +42,10 @@ function makeImage(id: string, overrides: Partial<JournalImage> = {}): JournalIm
 
 describe('ImageGallery', () => {
   it('renders one thumbnail per imageId', async () => {
-    vi.spyOn(db.images, 'get').mockImplementation(async (id) => {
-      if (id === 'a' || id === 'b') return makeImage(id as string);
+    vi.spyOn(db.images, 'get').mockImplementation((async (id: string) => {
+      if (id === 'a' || id === 'b') return makeImage(id);
       return undefined;
-    });
+    }) as unknown as typeof db.images.get);
     render(
       <ImageGallery imageIds={['a', 'b']} onRemove={vi.fn()} db={db} />,
       { wrapper },
@@ -69,7 +60,7 @@ describe('ImageGallery', () => {
     const link = screen.getByRole('link', { name: /open image/i });
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(link).toHaveAttribute('href', 'blob:fake');
+    expect(link).toHaveAttribute('href', 'blob:stub');
   });
 
   it('calls onRemove when the X button is clicked', async () => {

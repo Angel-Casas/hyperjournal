@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ExportPanel } from './ExportPanel';
@@ -10,24 +10,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// jsdom's URL doesn't implement createObjectURL/revokeObjectURL. Define
-// stubs once so spyOn has something to replace.
-beforeAll(() => {
-  if (!('createObjectURL' in URL)) {
-    Object.defineProperty(URL, 'createObjectURL', {
-      value: () => 'blob:stub',
-      writable: true,
-      configurable: true,
-    });
-  }
-  if (!('revokeObjectURL' in URL)) {
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      value: () => {},
-      writable: true,
-      configurable: true,
-    });
-  }
-});
+// URL.createObjectURL / revokeObjectURL stubs live in src/tests/setup.ts
+// (factored out in Session 7f).
 
 let db: HyperJournalDb;
 
