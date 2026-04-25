@@ -23,12 +23,15 @@ const emptyResult: MergeResult = {
   userSettingsToOverwrite: null,
   fillsCacheToUpsert: [],
   journalEntriesToUpsert: [],
+  imagesToUpsert: [],
   summary: {
     walletsAdded: 0,
     walletsUpdated: 0,
     userSettingsOverwritten: false,
     fillsCacheEntries: 0,
     journalEntriesImported: 0,
+    imagesAdded: 0,
+    imagesUpdated: 0,
   },
 };
 

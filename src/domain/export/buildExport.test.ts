@@ -10,6 +10,7 @@ const baseSnapshot: ExportSnapshot = {
   userSettings: { key: 'singleton', lastSelectedAddress: ADDR },
   fillsCache: [{ address: ADDR, fetchedAt: 200, fills: [] }],
   journalEntries: [],
+  images: [],
 };
 
 describe('buildExport', () => {
@@ -58,6 +59,7 @@ describe('buildExport', () => {
       userSettings: null,
       fillsCache: [],
       journalEntries: [],
+      images: [],
     };
     const walletsBefore = snap.wallets;
     buildExport(snap, { includeCache: true, now: 0 });

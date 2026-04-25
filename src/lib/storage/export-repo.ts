@@ -24,6 +24,7 @@ export function createExportRepo(db: HyperJournalDb): ExportRepo {
         userSettings: userSettings ?? null,
         fillsCache,
         journalEntries,
+        images: [],
       };
     },
   };

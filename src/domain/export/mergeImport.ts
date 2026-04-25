@@ -35,18 +35,22 @@ export function mergeImport(
 
   const fillsCacheToUpsert = incoming.data.fillsCache ?? [];
   const journalEntriesToUpsert = incoming.data.journalEntries ?? [];
+  const imagesToUpsert = incoming.data.images ?? [];
 
   return {
     walletsToUpsert,
     userSettingsToOverwrite,
     fillsCacheToUpsert,
     journalEntriesToUpsert,
+    imagesToUpsert,
     summary: {
       walletsAdded,
       walletsUpdated,
       userSettingsOverwritten,
       fillsCacheEntries: fillsCacheToUpsert.length,
       journalEntriesImported: journalEntriesToUpsert.length,
+      imagesAdded: 0,
+      imagesUpdated: 0,
     },
   };
 }

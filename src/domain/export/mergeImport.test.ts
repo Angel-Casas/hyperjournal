@@ -11,6 +11,7 @@ const emptySnapshot: ExportSnapshot = {
   userSettings: null,
   fillsCache: [],
   journalEntries: [],
+  images: [],
 };
 
 function makeFile(overrides: Partial<ExportFile['data']> = {}): ExportFile {
@@ -43,6 +44,7 @@ describe('mergeImport', () => {
       userSettings: null,
       fillsCache: [],
       journalEntries: [],
+      images: [],
     };
     const file = makeFile({
       wallets: [{ address: A, label: 'new', addedAt: 200 }],
@@ -59,6 +61,7 @@ describe('mergeImport', () => {
       userSettings: null,
       fillsCache: [],
       journalEntries: [],
+      images: [],
     };
     const file = makeFile({
       wallets: [
@@ -90,6 +93,7 @@ describe('mergeImport', () => {
       userSettings: { key: 'singleton', lastSelectedAddress: A },
       fillsCache: [],
       journalEntries: [],
+      images: [],
     };
     const file = makeFile({ userSettings: null });
     const result = mergeImport(existing, file);
