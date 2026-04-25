@@ -96,4 +96,47 @@ describe('ImportPanel', () => {
     });
     await waitFor(() => expect(screen.getByText(/newer version/i)).toBeInTheDocument());
   });
+
+  it('shows the image count in the dry-run summary (Session 7f)', async () => {
+    renderPanel();
+
+    const fileWithImages = {
+      app: 'HyperJournal',
+      formatVersion: 1,
+      exportedAt: 1714000000000,
+      data: {
+        wallets: [],
+        userSettings: null,
+        images: [
+          {
+            id: 'img-a',
+            dataUrl: 'data:image/png;base64,AAECAwQ=',
+            mime: 'image/png',
+            width: 1,
+            height: 1,
+            bytes: 5,
+            createdAt: 0,
+            provenance: 'observed',
+          },
+          {
+            id: 'img-b',
+            dataUrl: 'data:image/png;base64,BQYHCAk=',
+            mime: 'image/png',
+            width: 1,
+            height: 1,
+            bytes: 5,
+            createdAt: 0,
+            provenance: 'observed',
+          },
+        ],
+      },
+    };
+
+    const input = screen.getByLabelText(/import/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [fileFrom(fileWithImages)] } });
+
+    await waitFor(() =>
+      expect(screen.getByText(/2 image/i)).toBeInTheDocument(),
+    );
+  });
 });

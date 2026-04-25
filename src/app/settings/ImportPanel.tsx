@@ -116,6 +116,18 @@ export function ImportPanel({ db = defaultDb }: Props) {
                 </span>
               </>
             ) : null}
+            {state.result.summary.imagesAdded + state.result.summary.imagesUpdated > 0 ? (
+              <>
+                {' '}
+                and{' '}
+                <span className="font-medium">
+                  {state.result.summary.imagesAdded + state.result.summary.imagesUpdated} image
+                  {state.result.summary.imagesAdded + state.result.summary.imagesUpdated === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </>
+            ) : null}
             {state.result.summary.userSettingsOverwritten ? '. Settings will be overwritten.' : '.'}
           </p>
           <div className="flex gap-2">
