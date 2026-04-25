@@ -93,3 +93,41 @@ describe('buildExport', () => {
     expect(buildExport(snap, { includeCache: false, now: 0 }).data.journalEntries).toHaveLength(1);
   });
 });
+
+describe('images passthrough (Session 7f)', () => {
+  it('emits images: [] when the snapshot has no images', () => {
+    const file = buildExport(
+      {
+        wallets: [],
+        userSettings: null,
+        fillsCache: [],
+        journalEntries: [],
+        images: [],
+      },
+      { includeCache: false, now: 0 },
+    );
+    expect(file.data.images).toEqual([]);
+  });
+
+  it('passes images through unchanged in both includeCache modes', () => {
+    const img = {
+      id: 'img-1',
+      dataUrl: 'data:image/png;base64,AAAA',
+      mime: 'image/png' as const,
+      width: 1,
+      height: 1,
+      bytes: 1,
+      createdAt: 0,
+      provenance: 'observed' as const,
+    };
+    const snap = {
+      wallets: [],
+      userSettings: null,
+      fillsCache: [],
+      journalEntries: [],
+      images: [img],
+    };
+    expect(buildExport(snap, { includeCache: true, now: 0 }).data.images).toEqual([img]);
+    expect(buildExport(snap, { includeCache: false, now: 0 }).data.images).toEqual([img]);
+  });
+});

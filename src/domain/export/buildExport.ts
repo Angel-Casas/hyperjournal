@@ -21,11 +21,13 @@ export function buildExport(
         userSettings: snapshot.userSettings,
         fillsCache: snapshot.fillsCache,
         journalEntries: snapshot.journalEntries,
+        images: snapshot.images,
       }
     : {
         wallets: snapshot.wallets,
         userSettings: snapshot.userSettings,
         journalEntries: snapshot.journalEntries,
+        images: snapshot.images,
       };
 
   return {
