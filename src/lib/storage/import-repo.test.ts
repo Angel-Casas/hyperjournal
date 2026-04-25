@@ -121,3 +121,78 @@ describe('createImportRepo', () => {
     expect(row.preTradeThesis).toBe('t');
   });
 });
+
+describe('images apply (Session 7f)', () => {
+  it('decodes dataUrls and bulkPuts into images table', async () => {
+    const repo = createImportRepo(db);
+    await repo.applyMerge({
+      walletsToUpsert: [],
+      userSettingsToOverwrite: null,
+      fillsCacheToUpsert: [],
+      journalEntriesToUpsert: [],
+      imagesToUpsert: [
+        {
+          id: 'img-1',
+          dataUrl: 'data:image/png;base64,AAECAwQ=',
+          mime: 'image/png',
+          width: 1,
+          height: 1,
+          bytes: 5,
+          createdAt: 0,
+          provenance: 'observed',
+        },
+      ],
+      summary: {
+        walletsAdded: 0,
+        walletsUpdated: 0,
+        userSettingsOverwritten: false,
+        fillsCacheEntries: 0,
+        journalEntriesImported: 0,
+        imagesAdded: 1,
+        imagesUpdated: 0,
+      },
+    });
+    const row = await db.images.get('img-1');
+    expect(row).toBeDefined();
+    expect(row?.mime).toBe('image/png');
+    // bytes is the reliable size field; jsdom's blob.size drops through
+    // fake-indexeddb's structured clone (real browsers preserve it).
+    expect(row?.bytes).toBe(5);
+  });
+
+  it('rejects malformed dataUrl before any writes land', async () => {
+    const repo = createImportRepo(db);
+    // dataUrlToBlob throws synchronously *before* db.transaction is opened,
+    // so wallets-rollback isn't load-bearing — but no images get written.
+    await expect(
+      repo.applyMerge({
+        walletsToUpsert: [],
+        userSettingsToOverwrite: null,
+        fillsCacheToUpsert: [],
+        journalEntriesToUpsert: [],
+        imagesToUpsert: [
+          {
+            id: 'bad',
+            dataUrl: 'not-a-data-url',
+            mime: 'image/png',
+            width: 1,
+            height: 1,
+            bytes: 1,
+            createdAt: 0,
+            provenance: 'observed',
+          },
+        ],
+        summary: {
+          walletsAdded: 0,
+          walletsUpdated: 0,
+          userSettingsOverwritten: false,
+          fillsCacheEntries: 0,
+          journalEntriesImported: 0,
+          imagesAdded: 1,
+          imagesUpdated: 0,
+        },
+      }),
+    ).rejects.toThrow();
+    expect(await db.images.get('bad')).toBeUndefined();
+  });
+});
