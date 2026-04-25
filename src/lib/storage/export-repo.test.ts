@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HyperJournalDb } from './db';
 import { createExportRepo } from './export-repo';
 import type { WalletAddress } from '@entities/wallet';
@@ -76,5 +76,38 @@ describe('createExportRepo', () => {
     const first = snap.journalEntries[0]!;
     if (first.scope !== 'trade') throw new Error('expected trade entry');
     expect(first.preTradeThesis).toBe('t');
+  });
+});
+
+describe('image export (Session 7f)', () => {
+  it('emits images: [] when the table is empty', async () => {
+    const repo = createExportRepo(db);
+    const snap = await repo.readSnapshot();
+    expect(snap.images).toEqual([]);
+  });
+
+  it('encodes Blob images to base64 dataUrls', async () => {
+    // fake-indexeddb in jsdom strips the Blob to an empty object on
+    // retrieval. To test the encoding path, spy on db.images.toArray to
+    // return a real Blob directly, simulating real-browser IndexedDB.
+    const blob = new Blob([new Uint8Array([10, 20, 30])], { type: 'image/png' });
+    const realImage = {
+      id: 'img-1',
+      blob,
+      mime: 'image/png' as const,
+      width: 1,
+      height: 1,
+      bytes: 3,
+      createdAt: 0,
+      provenance: 'observed' as const,
+    };
+    vi.spyOn(db.images, 'toArray').mockResolvedValue([realImage]);
+
+    const repo = createExportRepo(db);
+    const snap = await repo.readSnapshot();
+    expect(snap.images).toHaveLength(1);
+    expect(snap.images[0]!.dataUrl.startsWith('data:image/png;base64,')).toBe(true);
+    expect(snap.images[0]!.id).toBe('img-1');
+    expect(snap.images[0]!.mime).toBe('image/png');
   });
 });
