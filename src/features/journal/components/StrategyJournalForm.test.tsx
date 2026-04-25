@@ -136,3 +136,59 @@ describe('StrategyJournalForm', () => {
     expect(await db.journalEntries.count()).toBe(0);
   });
 });
+
+vi.mock('@lib/images/decodeImageDimensions', () => ({
+  decodeImageDimensions: vi.fn(async () => ({ width: 100, height: 50 })),
+}));
+
+describe('image attachments (Session 7f)', () => {
+  it('uploading an image flushes pending text edits in the same save', async () => {
+    const userEvent = (await import('@testing-library/user-event')).default;
+    const user = userEvent.setup();
+    const { container } = renderForm();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/examples/i)).toBeInTheDocument(),
+    );
+    await user.type(screen.getByLabelText(/examples/i), 'unsaved text');
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'shot.png', {
+      type: 'image/png',
+    });
+    const input = container.querySelector(
+      'input[type=file][aria-label="Add image"]',
+    )! as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(async () => {
+      const stored = await db.journalEntries.get('s1');
+      if (!stored || stored.scope !== 'strategy') {
+        throw new Error('expected a strategy entry');
+      }
+      expect(stored.examples).toBe('unsaved text');
+      expect(stored.imageIds).toHaveLength(1);
+    });
+  });
+
+  it('shows the wrong-mime banner when uploading a HEIC', async () => {
+    const { container } = renderForm();
+    await waitFor(() =>
+      expect(
+        container.querySelector('input[type=file][aria-label="Add image"]'),
+      ).toBeInTheDocument(),
+    );
+    const input = container.querySelector(
+      'input[type=file][aria-label="Add image"]',
+    )! as HTMLInputElement;
+    const heic = new File([new Uint8Array([1])], 's.heic', { type: 'image/heic' });
+    Object.defineProperty(input, 'files', {
+      value: [heic],
+      configurable: true,
+    });
+    fireEvent.change(input);
+
+    expect(
+      await screen.findByText(/only PNG, JPEG, WebP, and GIF are supported/i),
+    ).toBeInTheDocument();
+  });
+});

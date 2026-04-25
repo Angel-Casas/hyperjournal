@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStrategyEntry } from '../hooks/useStrategyEntry';
 import { useAllTags } from '../hooks/useAllTags';
+import { useImagePasteHandler } from '../hooks/useImagePasteHandler';
+import { MAX_IMAGES_PER_ENTRY } from '../hooks/useTradeJournalEntry';
+import { ImageGallery } from './ImageGallery';
+import { ImageUploadButton } from './ImageUploadButton';
+import { ImageBanner, type BannerReason } from './ImageBanner';
 import { Input } from '@lib/ui/components/input';
 import { Label } from '@lib/ui/components/label';
 import { TagInput } from '@lib/ui/components/tag-input';
@@ -83,9 +88,32 @@ export function StrategyJournalForm({ id, db }: Props) {
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
+  const [imageBanner, setImageBanner] = useState<BannerReason | null>(null);
 
   const draftRef = useRef<DraftState>(draft);
   draftRef.current = draft;
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const bannerTimerRef = useRef<number | null>(null);
+
+  function showBanner(reason: BannerReason) {
+    if (bannerTimerRef.current !== null) {
+      window.clearTimeout(bannerTimerRef.current);
+    }
+    setImageBanner(reason);
+    bannerTimerRef.current = window.setTimeout(() => {
+      setImageBanner(null);
+      bannerTimerRef.current = null;
+    }, 5000);
+  }
+
+  useEffect(
+    () => () => {
+      if (bannerTimerRef.current !== null) {
+        window.clearTimeout(bannerTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!hydrated && !hook.isLoading) {
@@ -98,11 +126,12 @@ export function StrategyJournalForm({ id, db }: Props) {
     }
   }, [hook.entry, hook.isLoading, hydrated]);
 
-  async function commit(next: DraftState) {
-    if (isDraftEmpty(next) && !hook.entry) return;
-    setStatus({ kind: 'saving' });
-    const now = Date.now();
-    const entry: StrategyJournalEntry = {
+  function buildEntry(
+    next: DraftState,
+    imageIds: ReadonlyArray<string>,
+    now: number,
+  ): StrategyJournalEntry {
+    return {
       id: hook.entry?.id ?? id,
       scope: 'strategy',
       createdAt: hook.entry?.createdAt ?? now,
@@ -115,9 +144,16 @@ export function StrategyJournalForm({ id, db }: Props) {
       recurringMistakes: next.recurringMistakes,
       notes: next.notes,
       tags: normalizeTagList(next.tags),
-      imageIds: hook.entry?.imageIds ?? [],
+      imageIds,
       provenance: 'observed',
     };
+  }
+
+  async function commit(next: DraftState) {
+    if (isDraftEmpty(next) && !hook.entry) return;
+    setStatus({ kind: 'saving' });
+    const now = Date.now();
+    const entry = buildEntry(next, hook.entry?.imageIds ?? [], now);
     try {
       await hook.save(entry);
       setStatus({ kind: 'saved', at: now });
@@ -128,6 +164,39 @@ export function StrategyJournalForm({ id, db }: Props) {
       });
     }
   }
+
+  const handleAddImage = useCallback(
+    async (file: File) => {
+      const existing = hook.entry?.imageIds ?? [];
+      const result = await hook.addImage(file, (newImageId) =>
+        buildEntry(draftRef.current, [...existing, newImageId], Date.now()),
+      );
+      if (!result.ok) {
+        showBanner(result.reason);
+      } else {
+        setImageBanner(null);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hook],
+  );
+
+  const handleRemoveImage = useCallback(
+    async (imageId: string) => {
+      const existing = hook.entry?.imageIds ?? [];
+      await hook.removeImage(imageId, () =>
+        buildEntry(
+          draftRef.current,
+          existing.filter((x) => x !== imageId),
+          Date.now(),
+        ),
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hook],
+  );
+
+  useImagePasteHandler(sectionRef, handleAddImage);
 
   function change<K extends keyof DraftState>(key: K, value: DraftState[K]) {
     const next = { ...draftRef.current, [key]: value };
@@ -147,8 +216,11 @@ export function StrategyJournalForm({ id, db }: Props) {
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="strategy-journal-heading"
       className="flex flex-col gap-4 rounded-lg border border-border bg-bg-raised p-6"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
     >
       <div className="flex items-center justify-between gap-4">
         <h2 id="strategy-journal-heading" className="text-lg font-semibold text-fg-base">
@@ -216,6 +288,22 @@ export function StrategyJournalForm({ id, db }: Props) {
           rows={3}
           className={textareaClass}
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Images</Label>
+        <ImageGallery
+          imageIds={hook.entry?.imageIds ?? []}
+          onRemove={handleRemoveImage}
+          db={db}
+        />
+        <div>
+          <ImageUploadButton
+            onSelect={handleAddImage}
+            disabled={(hook.entry?.imageIds.length ?? 0) >= MAX_IMAGES_PER_ENTRY}
+          />
+        </div>
+        {imageBanner && <ImageBanner reason={imageBanner} />}
       </div>
 
       <div className="flex flex-col gap-2">
