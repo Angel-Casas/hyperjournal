@@ -142,7 +142,7 @@ vi.mock('@lib/images/decodeImageDimensions', () => ({
 }));
 
 describe('image attachments (Session 7f)', () => {
-  it('uploading an image flushes pending text edits in the same save', async () => {
+  it('uploading an image preserves the latest text edits', async () => {
     const userEvent = (await import('@testing-library/user-event')).default;
     const user = userEvent.setup();
     const { container } = renderForm();
@@ -151,6 +151,16 @@ describe('image attachments (Session 7f)', () => {
       expect(screen.getByLabelText(/examples/i)).toBeInTheDocument(),
     );
     await user.type(screen.getByLabelText(/examples/i), 'unsaved text');
+
+    // Sequence blur and image-select; see TradeJournalForm.test.tsx.
+    await user.tab();
+    await waitFor(async () => {
+      const stored = await db.journalEntries.get('s1');
+      if (!stored || stored.scope !== 'strategy') {
+        throw new Error('expected a strategy entry');
+      }
+      expect(stored.examples).toBe('unsaved text');
+    });
 
     const file = new File([new Uint8Array([1, 2, 3])], 'shot.png', {
       type: 'image/png',

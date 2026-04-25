@@ -15,7 +15,7 @@ import { TagInput } from '@lib/ui/components/tag-input';
 import { normalizeTagList } from '@lib/tags/normalizeTag';
 import { cn } from '@lib/ui/utils';
 import type { Mood, TradeJournalEntry } from '@entities/journal-entry';
-import type { HyperJournalDb } from '@lib/storage/db';
+import { db as defaultDb, type HyperJournalDb } from '@lib/storage/db';
 
 type Props = {
   tradeId: string;
@@ -153,12 +153,13 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     draft: DraftState,
     imageIds: ReadonlyArray<string>,
     now: number,
+    existing: TradeJournalEntry | null = hook.entry,
   ): TradeJournalEntry {
     return {
-      id: hook.entry?.id ?? crypto.randomUUID(),
+      id: existing?.id ?? crypto.randomUUID(),
       scope: 'trade',
       tradeId,
-      createdAt: hook.entry?.createdAt ?? now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       preTradeThesis: draft.preTradeThesis,
       postTradeReview: draft.postTradeReview,
@@ -173,6 +174,19 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     };
   }
 
+  // Reads the latest persisted trade entry (or null) so callers can build
+  // entries with stable id/createdAt regardless of TanStack-Query cache
+  // freshness. Used by image add/remove paths to avoid duplicating rows
+  // when the cache lags behind a recent commit.
+  async function readLatest(): Promise<TradeJournalEntry | null> {
+    const actualDb = db ?? defaultDb;
+    const fresh = await actualDb.journalEntries
+      .where('tradeId')
+      .equals(tradeId)
+      .first();
+    return fresh && fresh.scope === 'trade' ? fresh : null;
+  }
+
   async function commit(next: DraftState) {
     if (isDraftEmpty(next) && !hook.entry) {
       // No existing row and nothing to save — stay idle.
@@ -180,7 +194,13 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     }
     setStatus({ kind: 'saving' });
     const now = Date.now();
-    const entry = buildEntry(next, hook.entry?.imageIds ?? [], now);
+    // Read fresh from DB so id/createdAt/imageIds reflect the actual
+    // persisted state, not the (possibly stale) TanStack-Query cache.
+    // Without this, a commit() running shortly after an image action
+    // could either overwrite imageIds or generate a duplicate row.
+    const fresh = await readLatest();
+    const imageIds = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
+    const entry = buildEntry(next, imageIds, now, fresh);
     try {
       await hook.save(entry);
       setStatus({ kind: 'saved', at: now });
@@ -205,9 +225,15 @@ export function TradeJournalForm({ tradeId, db }: Props) {
 
   const handleAddImage = useCallback(
     async (file: File) => {
-      const existing = hook.entry?.imageIds ?? [];
+      const fresh = await readLatest();
+      const existing = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
       const result = await hook.addImage(file, (newImageId) =>
-        buildEntry(draftRef.current, [...existing, newImageId], Date.now()),
+        buildEntry(
+          draftRef.current,
+          [...existing, newImageId],
+          Date.now(),
+          fresh,
+        ),
       );
       if (!result.ok) {
         showBanner(result.reason);
@@ -223,12 +249,14 @@ export function TradeJournalForm({ tradeId, db }: Props) {
 
   const handleRemoveImage = useCallback(
     async (id: string) => {
-      const existing = hook.entry?.imageIds ?? [];
+      const fresh = await readLatest();
+      const existing = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
       await hook.removeImage(id, () =>
         buildEntry(
           draftRef.current,
           existing.filter((x) => x !== id),
           Date.now(),
+          fresh,
         ),
       );
     },

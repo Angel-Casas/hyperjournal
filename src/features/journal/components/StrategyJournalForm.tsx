@@ -12,7 +12,7 @@ import { TagInput } from '@lib/ui/components/tag-input';
 import { normalizeTagList } from '@lib/tags/normalizeTag';
 import { cn } from '@lib/ui/utils';
 import type { StrategyJournalEntry } from '@entities/journal-entry';
-import type { HyperJournalDb } from '@lib/storage/db';
+import { db as defaultDb, type HyperJournalDb } from '@lib/storage/db';
 
 type Props = {
   id: string;
@@ -130,11 +130,12 @@ export function StrategyJournalForm({ id, db }: Props) {
     next: DraftState,
     imageIds: ReadonlyArray<string>,
     now: number,
+    existing: StrategyJournalEntry | null = hook.entry,
   ): StrategyJournalEntry {
     return {
-      id: hook.entry?.id ?? id,
+      id: existing?.id ?? id,
       scope: 'strategy',
-      createdAt: hook.entry?.createdAt ?? now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       name: next.name,
       conditions: next.conditions,
@@ -149,11 +150,19 @@ export function StrategyJournalForm({ id, db }: Props) {
     };
   }
 
+  async function readLatest(): Promise<StrategyJournalEntry | null> {
+    const actualDb = db ?? defaultDb;
+    const fresh = await actualDb.journalEntries.get(id);
+    return fresh && fresh.scope === 'strategy' ? fresh : null;
+  }
+
   async function commit(next: DraftState) {
     if (isDraftEmpty(next) && !hook.entry) return;
     setStatus({ kind: 'saving' });
     const now = Date.now();
-    const entry = buildEntry(next, hook.entry?.imageIds ?? [], now);
+    const fresh = await readLatest();
+    const imageIds = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
+    const entry = buildEntry(next, imageIds, now, fresh);
     try {
       await hook.save(entry);
       setStatus({ kind: 'saved', at: now });
@@ -167,9 +176,15 @@ export function StrategyJournalForm({ id, db }: Props) {
 
   const handleAddImage = useCallback(
     async (file: File) => {
-      const existing = hook.entry?.imageIds ?? [];
+      const fresh = await readLatest();
+      const existing = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
       const result = await hook.addImage(file, (newImageId) =>
-        buildEntry(draftRef.current, [...existing, newImageId], Date.now()),
+        buildEntry(
+          draftRef.current,
+          [...existing, newImageId],
+          Date.now(),
+          fresh,
+        ),
       );
       if (!result.ok) {
         showBanner(result.reason);
@@ -183,12 +198,14 @@ export function StrategyJournalForm({ id, db }: Props) {
 
   const handleRemoveImage = useCallback(
     async (imageId: string) => {
-      const existing = hook.entry?.imageIds ?? [];
+      const fresh = await readLatest();
+      const existing = fresh?.imageIds ?? hook.entry?.imageIds ?? [];
       await hook.removeImage(imageId, () =>
         buildEntry(
           draftRef.current,
           existing.filter((x) => x !== imageId),
           Date.now(),
+          fresh,
         ),
       );
     },

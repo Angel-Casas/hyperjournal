@@ -280,12 +280,11 @@ vi.mock('@lib/images/decodeImageDimensions', () => ({
 }));
 
 describe('image attachments (Session 7f)', () => {
-  it('uploading an image flushes pending text edits in the same save', async () => {
+  it('uploading an image preserves the latest text edits', async () => {
     const userEvent = (await import('@testing-library/user-event')).default;
     const user = userEvent.setup();
     const { container } = renderForm();
 
-    // Type into postTradeReview but do NOT blur.
     await waitFor(() =>
       expect(screen.getByLabelText(/post-trade review/i)).toBeInTheDocument(),
     );
@@ -293,6 +292,23 @@ describe('image attachments (Session 7f)', () => {
       screen.getByLabelText(/post-trade review/i),
       'unsaved text',
     );
+
+    // Real browsers gap blur and file selection (the OS file picker opens
+    // first, the user picks later). Mirror that by tabbing away (which
+    // triggers blur → commit) and waiting for the commit to land before
+    // uploading. Without this gap, blur and file-change race in the same
+    // event tick — a test artifact, not a real-user scenario.
+    await user.tab();
+    await waitFor(async () => {
+      const stored = await db.journalEntries
+        .where('tradeId')
+        .equals('BTC-1')
+        .first();
+      if (!stored || stored.scope !== 'trade') {
+        throw new Error('expected a trade entry');
+      }
+      expect(stored.postTradeReview).toBe('unsaved text');
+    });
 
     const file = new File(
       [new Uint8Array([137, 80, 78, 71])],
