@@ -37,6 +37,14 @@ export function mergeImport(
   const journalEntriesToUpsert = incoming.data.journalEntries ?? [];
   const imagesToUpsert = incoming.data.images ?? [];
 
+  const existingImageIds = new Set(existing.images.map((i) => i.id));
+  let imagesAdded = 0;
+  let imagesUpdated = 0;
+  for (const img of imagesToUpsert) {
+    if (existingImageIds.has(img.id)) imagesUpdated += 1;
+    else imagesAdded += 1;
+  }
+
   return {
     walletsToUpsert,
     userSettingsToOverwrite,
@@ -49,8 +57,8 @@ export function mergeImport(
       userSettingsOverwritten,
       fillsCacheEntries: fillsCacheToUpsert.length,
       journalEntriesImported: journalEntriesToUpsert.length,
-      imagesAdded: 0,
-      imagesUpdated: 0,
+      imagesAdded,
+      imagesUpdated,
     },
   };
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mergeImport } from './mergeImport';
 import type { ExportFile, ExportSnapshot } from '@entities/export';
+import type { JournalImageExported } from '@entities/journal-image';
 import type { WalletAddress } from '@entities/wallet';
 
 const A = '0x000000000000000000000000000000000000000A' as WalletAddress;
@@ -163,5 +164,48 @@ describe('mergeImport', () => {
     const result = mergeImport(emptySnapshot, file);
     expect(result.journalEntriesToUpsert).toEqual([]);
     expect(result.summary.journalEntriesImported).toBe(0);
+  });
+});
+
+describe('images merge (Session 7f)', () => {
+  const sampleImage: JournalImageExported = {
+    id: 'img-1',
+    dataUrl: 'data:image/png;base64,AAAA',
+    mime: 'image/png',
+    width: 1,
+    height: 1,
+    bytes: 1,
+    createdAt: 0,
+    provenance: 'observed',
+  };
+
+  it('collects imagesToUpsert from the incoming file', () => {
+    const file = makeFile({ images: [sampleImage] });
+    const result = mergeImport(emptySnapshot, file);
+    expect(result.imagesToUpsert).toEqual([sampleImage]);
+  });
+
+  it('counts imagesAdded and imagesUpdated against the existing snapshot', () => {
+    const existing: ExportSnapshot = {
+      ...emptySnapshot,
+      images: [{ ...sampleImage, id: 'existing' }],
+    };
+    const file = makeFile({
+      images: [
+        { ...sampleImage, id: 'existing' },
+        { ...sampleImage, id: 'new' },
+      ],
+    });
+    const result = mergeImport(existing, file);
+    expect(result.summary.imagesAdded).toBe(1);
+    expect(result.summary.imagesUpdated).toBe(1);
+  });
+
+  it('treats a missing data.images key as empty (pre-7f file)', () => {
+    const file = makeFile();
+    const result = mergeImport(emptySnapshot, file);
+    expect(result.imagesToUpsert).toEqual([]);
+    expect(result.summary.imagesAdded).toBe(0);
+    expect(result.summary.imagesUpdated).toBe(0);
   });
 });
