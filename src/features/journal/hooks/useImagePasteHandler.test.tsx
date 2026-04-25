@@ -7,18 +7,22 @@ function makeClipboardEvent(items: Array<File | string>): Event {
   // jsdom's ClipboardEvent constructor doesn't support clipboardData fully,
   // so we hand-build an Event and attach a fake clipboardData.
   const event = new Event('paste', { bubbles: true, cancelable: true });
-  const dtItems = items.map((item) => {
+  const dtItems = items.map((item): {
+    kind: 'file' | 'string';
+    type: string;
+    getAsFile: () => File | null;
+  } => {
     if (item instanceof File) {
       return {
-        kind: 'file' as const,
+        kind: 'file',
         type: item.type,
-        getAsFile: () => item,
+        getAsFile: (): File | null => item,
       };
     }
     return {
-      kind: 'string' as const,
+      kind: 'string',
       type: 'text/plain',
-      getAsFile: () => null,
+      getAsFile: (): File | null => null,
     };
   });
   Object.defineProperty(event, 'clipboardData', {
