@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTradeJournalEntry } from '../hooks/useTradeJournalEntry';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  MAX_IMAGES_PER_ENTRY,
+  useTradeJournalEntry,
+} from '../hooks/useTradeJournalEntry';
+import { useImagePasteHandler } from '../hooks/useImagePasteHandler';
 import { useStrategies } from '../hooks/useStrategies';
 import { useAllTags } from '../hooks/useAllTags';
 import { TriStateRadio } from './TriStateRadio';
+import { ImageGallery } from './ImageGallery';
+import { ImageUploadButton } from './ImageUploadButton';
+import { ImageBanner, type BannerReason } from './ImageBanner';
 import { Label } from '@lib/ui/components/label';
 import { TagInput } from '@lib/ui/components/tag-input';
 import { normalizeTagList } from '@lib/tags/normalizeTag';
@@ -96,6 +103,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
   const [status, setStatus] = useState<Status>({ kind: 'clean' });
   const [hydrated, setHydrated] = useState(false);
+  const [imageBanner, setImageBanner] = useState<BannerReason | null>(null);
 
   // Ref tracks the latest draft so onBlurCommit — which may fire in the
   // same synchronous tick as a preceding change — reads the updated
@@ -103,6 +111,28 @@ export function TradeJournalForm({ tradeId, db }: Props) {
   // handler captures the pre-change state and skips the save.
   const draftRef = useRef<DraftState>(draft);
   draftRef.current = draft;
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const bannerTimerRef = useRef<number | null>(null);
+
+  function showBanner(reason: BannerReason) {
+    if (bannerTimerRef.current !== null) {
+      window.clearTimeout(bannerTimerRef.current);
+    }
+    setImageBanner(reason);
+    bannerTimerRef.current = window.setTimeout(() => {
+      setImageBanner(null);
+      bannerTimerRef.current = null;
+    }, 5000);
+  }
+
+  useEffect(
+    () => () => {
+      if (bannerTimerRef.current !== null) {
+        window.clearTimeout(bannerTimerRef.current);
+      }
+    },
+    [],
+  );
 
   // Hydrate once when the query resolves the first time. If the entry
   // is null (no prior journal), skip the setDraft — draft is already
@@ -119,6 +149,30 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     }
   }, [hook.entry, hook.isLoading, hydrated]);
 
+  function buildEntry(
+    draft: DraftState,
+    imageIds: ReadonlyArray<string>,
+    now: number,
+  ): TradeJournalEntry {
+    return {
+      id: hook.entry?.id ?? crypto.randomUUID(),
+      scope: 'trade',
+      tradeId,
+      createdAt: hook.entry?.createdAt ?? now,
+      updatedAt: now,
+      preTradeThesis: draft.preTradeThesis,
+      postTradeReview: draft.postTradeReview,
+      lessonLearned: draft.lessonLearned,
+      mood: draft.mood,
+      planFollowed: draft.planFollowed,
+      stopLossUsed: draft.stopLossUsed,
+      strategyId: draft.strategyId,
+      tags: normalizeTagList(draft.tags),
+      imageIds,
+      provenance: 'observed',
+    };
+  }
+
   async function commit(next: DraftState) {
     if (isDraftEmpty(next) && !hook.entry) {
       // No existing row and nothing to save — stay idle.
@@ -126,23 +180,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     }
     setStatus({ kind: 'saving' });
     const now = Date.now();
-    const entry: TradeJournalEntry = {
-      id: hook.entry?.id ?? crypto.randomUUID(),
-      scope: 'trade',
-      tradeId,
-      createdAt: hook.entry?.createdAt ?? now,
-      updatedAt: now,
-      preTradeThesis: next.preTradeThesis,
-      postTradeReview: next.postTradeReview,
-      lessonLearned: next.lessonLearned,
-      mood: next.mood,
-      planFollowed: next.planFollowed,
-      stopLossUsed: next.stopLossUsed,
-      strategyId: next.strategyId,
-      tags: normalizeTagList(next.tags),
-      imageIds: hook.entry?.imageIds ?? [],
-      provenance: 'observed',
-    };
+    const entry = buildEntry(next, hook.entry?.imageIds ?? [], now);
     try {
       await hook.save(entry);
       setStatus({ kind: 'saved', at: now });
@@ -165,6 +203,41 @@ export function TradeJournalForm({ tradeId, db }: Props) {
     void commit(draftRef.current);
   }
 
+  const handleAddImage = useCallback(
+    async (file: File) => {
+      const existing = hook.entry?.imageIds ?? [];
+      const result = await hook.addImage(file, (newImageId) =>
+        buildEntry(draftRef.current, [...existing, newImageId], Date.now()),
+      );
+      if (!result.ok) {
+        showBanner(result.reason);
+      } else {
+        setImageBanner(null);
+      }
+    },
+    // hook and buildEntry are stable enough; deps intentionally omit
+    // buildEntry (closure over identifiers that don't trigger re-renders).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hook],
+  );
+
+  const handleRemoveImage = useCallback(
+    async (id: string) => {
+      const existing = hook.entry?.imageIds ?? [];
+      await hook.removeImage(id, () =>
+        buildEntry(
+          draftRef.current,
+          existing.filter((x) => x !== id),
+          Date.now(),
+        ),
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hook],
+  );
+
+  useImagePasteHandler(sectionRef, handleAddImage);
+
   const suggestions = useMemo(
     () => allTags.tags.filter((t) => !draft.tags.includes(t)),
     [allTags.tags, draft.tags],
@@ -172,8 +245,11 @@ export function TradeJournalForm({ tradeId, db }: Props) {
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="journal-heading"
       className="flex flex-col gap-4 rounded-lg border border-border bg-bg-raised p-6"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
     >
       <div className="flex items-center justify-between gap-4">
         <h2 id="journal-heading" className="text-lg font-semibold text-fg-base">
@@ -292,6 +368,22 @@ export function TradeJournalForm({ tradeId, db }: Props) {
           suggestions={suggestions}
           placeholder="Add tags, press Enter"
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Images</Label>
+        <ImageGallery
+          imageIds={hook.entry?.imageIds ?? []}
+          onRemove={handleRemoveImage}
+          db={db}
+        />
+        <div>
+          <ImageUploadButton
+            onSelect={handleAddImage}
+            disabled={(hook.entry?.imageIds.length ?? 0) >= MAX_IMAGES_PER_ENTRY}
+          />
+        </div>
+        {imageBanner && <ImageBanner reason={imageBanner} />}
       </div>
 
       <TriStateRadio

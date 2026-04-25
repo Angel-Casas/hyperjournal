@@ -274,3 +274,70 @@ describe('TradeJournalForm', () => {
     );
   });
 });
+
+vi.mock('@lib/images/decodeImageDimensions', () => ({
+  decodeImageDimensions: vi.fn(async () => ({ width: 100, height: 50 })),
+}));
+
+describe('image attachments (Session 7f)', () => {
+  it('uploading an image flushes pending text edits in the same save', async () => {
+    const userEvent = (await import('@testing-library/user-event')).default;
+    const user = userEvent.setup();
+    const { container } = renderForm();
+
+    // Type into postTradeReview but do NOT blur.
+    await waitFor(() =>
+      expect(screen.getByLabelText(/post-trade review/i)).toBeInTheDocument(),
+    );
+    await user.type(
+      screen.getByLabelText(/post-trade review/i),
+      'unsaved text',
+    );
+
+    const file = new File(
+      [new Uint8Array([137, 80, 78, 71])],
+      'shot.png',
+      { type: 'image/png' },
+    );
+    const input = container.querySelector(
+      'input[type=file][aria-label="Add image"]',
+    )! as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(async () => {
+      const stored = await db.journalEntries
+        .where('tradeId')
+        .equals('BTC-1')
+        .first();
+      expect(stored?.postTradeReview).toBe('unsaved text');
+      expect(stored?.imageIds).toHaveLength(1);
+    });
+  });
+
+  it('shows the wrong-mime banner when uploading a HEIC', async () => {
+    const { container } = renderForm();
+    await waitFor(() =>
+      expect(
+        container.querySelector('input[type=file][aria-label="Add image"]'),
+      ).toBeInTheDocument(),
+    );
+    const input = container.querySelector(
+      'input[type=file][aria-label="Add image"]',
+    )! as HTMLInputElement;
+    const heic = new File([new Uint8Array([1])], 's.heic', {
+      type: 'image/heic',
+    });
+    // user-event.upload silently drops files that fail accept-attribute
+    // matching even with applyAccept:false (jsdom-specific). fireEvent.change
+    // bypasses that path entirely and is the right tool for this assertion.
+    Object.defineProperty(input, 'files', {
+      value: [heic],
+      configurable: true,
+    });
+    fireEvent.change(input);
+
+    expect(
+      await screen.findByText(/only PNG, JPEG, WebP, and GIF are supported/i),
+    ).toBeInTheDocument();
+  });
+});

@@ -5,7 +5,7 @@ import { cn } from '@lib/ui/utils';
 type Props = {
   imageIds: ReadonlyArray<string>;
   onRemove: (id: string) => void;
-  db?: HyperJournalDb;
+  db?: HyperJournalDb | undefined;
 };
 
 export function ImageGallery({ imageIds, onRemove, db }: Props) {
