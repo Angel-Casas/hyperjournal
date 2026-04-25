@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -76,5 +76,95 @@ describe('useTradeJournalEntry', () => {
       await result.current.remove('e1');
     });
     await waitFor(() => expect(result.current.entry).toBeNull());
+  });
+});
+
+// Mock decodeImageDimensions so tests don't go through Image()/URL.
+vi.mock('@lib/images/decodeImageDimensions', () => ({
+  decodeImageDimensions: vi.fn(async () => ({ width: 100, height: 50 })),
+}));
+
+describe('addImage / removeImage (Session 7f)', () => {
+  it('addImage validates, writes image + entry atomically, and returns ok', async () => {
+    const { result } = renderHook(() => useTradeJournalEntry('TRD-1', { db }), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'shot.png', {
+      type: 'image/png',
+    });
+    const buildEntry = (newImageId: string): TradeJournalEntry =>
+      makeEntry({
+        tradeId: 'TRD-1',
+        preTradeThesis: 'thesis',
+        imageIds: [newImageId],
+      });
+
+    let res!: Awaited<ReturnType<typeof result.current.addImage>>;
+    await act(async () => {
+      res = await result.current.addImage(file, buildEntry);
+    });
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('expected ok');
+
+    const stored = await db.journalEntries.get('e1');
+    expect(stored?.imageIds).toEqual([res.imageId]);
+    const img = await db.images.get(res.imageId);
+    expect(img?.mime).toBe('image/png');
+    expect(img?.bytes).toBe(3);
+  });
+
+  it('addImage returns wrong-mime for HEIC', async () => {
+    const { result } = renderHook(() => useTradeJournalEntry('TRD-1', { db }), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const heic = new File([new Uint8Array([1])], 'shot.heic', {
+      type: 'image/heic',
+    });
+    let res!: Awaited<ReturnType<typeof result.current.addImage>>;
+    await act(async () => {
+      res = await result.current.addImage(heic, () => makeEntry({ tradeId: 'TRD-1' }));
+    });
+    expect(res).toEqual({ ok: false, reason: 'wrong-mime' });
+    // No entry or image should have been written.
+    expect(await db.journalEntries.where('tradeId').equals('TRD-1').count()).toBe(0);
+    expect(await db.images.count()).toBe(0);
+  });
+
+  it('removeImage deletes the row and rewrites the entry', async () => {
+    // Seed: entry with one image (image goes through fake-indexeddb but
+    // we never need to read its blob in this test).
+    await db.images.put({
+      id: 'img-1',
+      blob: new Blob([new Uint8Array([1])], { type: 'image/png' }),
+      mime: 'image/png',
+      width: 1,
+      height: 1,
+      bytes: 1,
+      createdAt: 0,
+      provenance: 'observed',
+    });
+    await db.journalEntries.put(
+      makeEntry({ tradeId: 'TRD-1', imageIds: ['img-1'] }),
+    );
+
+    const { result } = renderHook(() => useTradeJournalEntry('TRD-1', { db }), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.entry).not.toBeNull());
+
+    const buildEntry = (): TradeJournalEntry =>
+      makeEntry({ tradeId: 'TRD-1', imageIds: [] });
+
+    await act(async () => {
+      await result.current.removeImage('img-1', buildEntry);
+    });
+
+    expect(await db.images.get('img-1')).toBeUndefined();
+    expect((await db.journalEntries.get('e1'))?.imageIds).toEqual([]);
   });
 });
