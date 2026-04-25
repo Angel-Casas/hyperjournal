@@ -476,3 +476,100 @@ describe('parseExport', () => {
     expect(() => parseExport({ nope: true })).toThrow();
   });
 });
+
+describe('JournalImageExportSchema (Session 7f)', () => {
+  const valid = {
+    id: 'img-1',
+    dataUrl: 'data:image/png;base64,AAAA',
+    mime: 'image/png' as const,
+    width: 100,
+    height: 100,
+    bytes: 1234,
+    createdAt: 0,
+    provenance: 'observed' as const,
+  };
+
+  it('parses a valid image entry', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        app: 'HyperJournal',
+        formatVersion: 1,
+        exportedAt: 0,
+        data: { wallets: [], userSettings: null, images: [valid] },
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects malformed dataUrl', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        app: 'HyperJournal',
+        formatVersion: 1,
+        exportedAt: 0,
+        data: {
+          wallets: [],
+          userSettings: null,
+          images: [{ ...valid, dataUrl: 'not-a-data-url' }],
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects negative dimensions', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        app: 'HyperJournal',
+        formatVersion: 1,
+        exportedAt: 0,
+        data: {
+          wallets: [],
+          userSettings: null,
+          images: [{ ...valid, width: -1 }],
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('parses a pre-7f file with no images key', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        app: 'HyperJournal',
+        formatVersion: 1,
+        exportedAt: 0,
+        data: { wallets: [], userSettings: null },
+      }),
+    ).not.toThrow();
+  });
+
+  it('parses a pre-7f journal entry with no imageIds', () => {
+    expect(() =>
+      ExportFileSchema.parse({
+        app: 'HyperJournal',
+        formatVersion: 1,
+        exportedAt: 0,
+        data: {
+          wallets: [],
+          userSettings: null,
+          journalEntries: [
+            {
+              id: 'e1',
+              scope: 'trade',
+              tradeId: 't1',
+              createdAt: 0,
+              updatedAt: 0,
+              preTradeThesis: '',
+              postTradeReview: '',
+              lessonLearned: '',
+              mood: null,
+              planFollowed: null,
+              stopLossUsed: null,
+              strategyId: null,
+              tags: [],
+              provenance: 'observed',
+            },
+          ],
+        },
+      }),
+    ).not.toThrow();
+  });
+});

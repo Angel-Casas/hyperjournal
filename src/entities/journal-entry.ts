@@ -56,6 +56,13 @@ export type TradeJournalEntry = {
    */
   readonly tags: ReadonlyArray<string>;
 
+  /**
+   * UUIDs of attached JournalImage rows. Introduced in Session 7f.
+   * Pre-7f rows may carry `undefined`; consumers treat `undefined` as
+   * `[]`. Next upsert writes `[]` explicitly. Mirrors the 7e tags pattern.
+   */
+  readonly imageIds: ReadonlyArray<string>;
+
   readonly provenance: Provenance;
 };
 
@@ -84,6 +91,13 @@ export type SessionJournalEntry = {
    * tags. See `@lib/tags/normalizeTag`.
    */
   readonly tags: ReadonlyArray<string>;
+
+  /**
+   * UUIDs of attached JournalImage rows. Introduced in Session 7f.
+   * Pre-7f rows may carry `undefined`; consumers treat `undefined` as
+   * `[]`. Mirrors the trade-scope pattern.
+   */
+  readonly imageIds: ReadonlyArray<string>;
 
   readonly provenance: Provenance;
 };
@@ -118,13 +132,20 @@ export type StrategyJournalEntry = {
    */
   readonly tags: ReadonlyArray<string>;
 
+  /**
+   * UUIDs of attached JournalImage rows. Introduced in Session 7f.
+   * Pre-7f rows may carry `undefined`; consumers treat `undefined` as
+   * `[]`. Mirrors the trade-scope pattern.
+   */
+  readonly imageIds: ReadonlyArray<string>;
+
   readonly provenance: Provenance;
 };
 
 /**
  * Discriminated union across all journal scopes. Narrow on `scope` to
- * access variant-specific fields. Session 7d will extend this union
- * with image-attachment variants.
+ * access variant-specific fields. Session 7f added imageIds; cross-cut,
+ * not per-variant.
  */
 export type JournalEntry =
   | TradeJournalEntry

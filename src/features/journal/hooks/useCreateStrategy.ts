@@ -38,6 +38,7 @@ export function useCreateStrategy(options: Options = {}): UseCreateStrategyResul
         recurringMistakes: '',
         notes: '',
         tags: [],
+        imageIds: [],
         provenance: 'observed',
       };
       await repo.upsert(entry);

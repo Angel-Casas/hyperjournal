@@ -39,6 +39,7 @@ function makeEntry(overrides: Partial<TradeJournalEntry> = {}): TradeJournalEntr
     stopLossUsed: null,
     strategyId: null,
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

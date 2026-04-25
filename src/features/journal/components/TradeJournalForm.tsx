@@ -140,6 +140,7 @@ export function TradeJournalForm({ tradeId, db }: Props) {
       stopLossUsed: next.stopLossUsed,
       strategyId: next.strategyId,
       tags: normalizeTagList(next.tags),
+      imageIds: hook.entry?.imageIds ?? [],
       provenance: 'observed',
     };
     try {

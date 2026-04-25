@@ -66,6 +66,7 @@ describe('createExportRepo', () => {
       stopLossUsed: null,
       strategyId: null,
       tags: [],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(tradeEntry);

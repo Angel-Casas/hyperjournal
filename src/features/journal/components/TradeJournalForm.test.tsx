@@ -20,6 +20,7 @@ async function seedStrategy(
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };
@@ -73,6 +74,7 @@ describe('TradeJournalForm', () => {
       stopLossUsed: null,
       strategyId: null,
       tags: [],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);
@@ -223,6 +225,7 @@ describe('TradeJournalForm', () => {
       stopLossUsed: null,
       strategyId: 's-a',
       tags: [],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(existing);
@@ -256,6 +259,7 @@ describe('TradeJournalForm', () => {
       stopLossUsed: null,
       strategyId: 'gone',
       tags: [],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(existing);

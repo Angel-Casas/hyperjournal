@@ -59,6 +59,17 @@ const MindsetSchema = z
   .enum(['focused', 'scattered', 'reactive', 'patient', 'tilted'])
   .nullable();
 
+const JournalImageExportSchema = z.object({
+  id: z.string().min(1),
+  dataUrl: z.string().regex(/^data:image\/(png|jpeg|webp|gif);base64,/),
+  mime: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  bytes: z.number().int().positive(),
+  createdAt: z.number().int().nonnegative(),
+  provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
+});
+
 const TradeJournalEntrySchema = z.object({
   id: z.string().min(1),
   scope: z.literal('trade'),
@@ -73,6 +84,7 @@ const TradeJournalEntrySchema = z.object({
   stopLossUsed: z.boolean().nullable(),
   strategyId: z.string().min(1).nullable().default(null),
   tags: z.array(z.string()).default([]),
+  imageIds: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
@@ -89,6 +101,7 @@ const SessionJournalEntrySchema = z.object({
   mindset: MindsetSchema,
   disciplineScore: z.number().int().min(1).max(5).nullable(),
   tags: z.array(z.string()).default([]),
+  imageIds: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
@@ -105,6 +118,7 @@ const StrategyJournalEntrySchema = z.object({
   recurringMistakes: z.string(),
   notes: z.string(),
   tags: z.array(z.string()).default([]),
+  imageIds: z.array(z.string()).default([]),
   provenance: z.enum(['observed', 'derived', 'inferred', 'unknown']),
 });
 
@@ -119,6 +133,7 @@ const ExportDataSchema = z.object({
   userSettings: UserSettingsSchema,
   fillsCache: z.array(FillsCacheEntrySchema).optional(),
   journalEntries: z.array(JournalEntrySchema).optional(),
+  images: z.array(JournalImageExportSchema).optional(),
 });
 
 export const ExportFileSchema = z.object({

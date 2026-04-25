@@ -38,6 +38,7 @@ function makeStrategy(overrides: Partial<StrategyJournalEntry>): StrategyJournal
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

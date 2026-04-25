@@ -28,6 +28,7 @@ async function seed(entry: Partial<StrategyJournalEntry> & { id: string }) {
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...entry,
   };

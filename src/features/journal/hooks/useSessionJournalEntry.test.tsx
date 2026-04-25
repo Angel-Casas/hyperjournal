@@ -38,6 +38,7 @@ function makeEntry(overrides: Partial<SessionJournalEntry> = {}): SessionJournal
     mindset: null,
     disciplineScore: null,
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

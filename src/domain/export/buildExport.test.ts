@@ -82,6 +82,7 @@ describe('buildExport', () => {
           stopLossUsed: null,
           strategyId: null,
           tags: [],
+          imageIds: [],
           provenance: 'observed',
         },
       ],

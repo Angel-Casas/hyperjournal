@@ -46,6 +46,7 @@ describe('useJournalTagsByTradeId', () => {
       stopLossUsed: null,
       strategyId: null,
       tags: ['breakout'],
+      imageIds: [],
       provenance: 'observed',
     };
     const session: SessionJournalEntry = {
@@ -61,6 +62,7 @@ describe('useJournalTagsByTradeId', () => {
       mindset: null,
       disciplineScore: null,
       tags: ['ignored'],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(trade);

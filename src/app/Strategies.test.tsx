@@ -58,6 +58,7 @@ describe('Strategies', () => {
       recurringMistakes: '',
       notes: '',
       tags: ['breakout', 'momentum'],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

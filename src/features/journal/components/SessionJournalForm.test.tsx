@@ -51,6 +51,7 @@ describe('SessionJournalForm', () => {
       mindset: 'focused',
       disciplineScore: 4,
       tags: [],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

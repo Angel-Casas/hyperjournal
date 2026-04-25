@@ -50,6 +50,7 @@ describe('useAllTags', () => {
       stopLossUsed: null,
       strategyId: null,
       tags: ['breakout', 'fomc'],
+      imageIds: [],
       provenance: 'observed',
     };
     const session: SessionJournalEntry = {
@@ -65,6 +66,7 @@ describe('useAllTags', () => {
       mindset: null,
       disciplineScore: null,
       tags: ['fomc', 'macro'],
+      imageIds: [],
       provenance: 'observed',
     };
     const strat: StrategyJournalEntry = {
@@ -80,6 +82,7 @@ describe('useAllTags', () => {
       recurringMistakes: '',
       notes: '',
       tags: ['breakout', 'momentum'],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(trade);

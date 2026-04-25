@@ -115,6 +115,7 @@ export function StrategyJournalForm({ id, db }: Props) {
       recurringMistakes: next.recurringMistakes,
       notes: next.notes,
       tags: normalizeTagList(next.tags),
+      imageIds: hook.entry?.imageIds ?? [],
       provenance: 'observed',
     };
     try {

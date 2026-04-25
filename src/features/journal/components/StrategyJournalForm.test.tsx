@@ -31,6 +31,7 @@ async function seed(entry: Partial<StrategyJournalEntry>) {
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...entry,
   };

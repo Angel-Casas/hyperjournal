@@ -38,6 +38,7 @@ function makeEntry(overrides: Partial<StrategyJournalEntry> = {}): StrategyJourn
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

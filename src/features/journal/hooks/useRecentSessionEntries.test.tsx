@@ -38,6 +38,7 @@ function makeSession(overrides: Partial<SessionJournalEntry>): SessionJournalEnt
     mindset: null,
     disciplineScore: null,
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

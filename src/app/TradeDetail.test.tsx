@@ -86,6 +86,7 @@ async function seedTradeJournal(
     stopLossUsed: null,
     strategyId: null,
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };
@@ -106,6 +107,7 @@ async function seedStrategy(
     recurringMistakes: '',
     notes: '',
     tags: [],
+    imageIds: [],
     provenance: 'observed',
     ...overrides,
   };

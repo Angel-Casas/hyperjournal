@@ -59,6 +59,7 @@ describe('JournalPanel', () => {
       mindset: null,
       disciplineScore: null,
       tags: ['fomc'],
+      imageIds: [],
       provenance: 'observed',
     };
     await db.journalEntries.put(entry);

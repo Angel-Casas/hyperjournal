@@ -119,6 +119,7 @@ export function SessionJournalForm({ date, db }: Props) {
       mindset: next.mindset,
       disciplineScore: next.disciplineScore,
       tags: normalizeTagList(next.tags),
+      imageIds: hook.entry?.imageIds ?? [],
       provenance: 'observed',
     };
     try {
