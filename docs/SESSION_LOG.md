@@ -656,3 +656,67 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Empty `tags: []` is always the fallback — never null, never undefined in the final TypeScript type (even if Dexie storage has undefined from pre-7e rows).
 
 ---
+
+## 2026-04-25 — Phase 1 Session 7f: Screenshots / images
+
+**Session goal:** Ship image attachments on every journal variant — file-picker upload, Cmd/Ctrl+V paste, click-to-open, delete, cascade-on-entry-remove, and lossless round-trip through export/import. Storage in a separate Dexie table; no compression.
+
+**Done:**
+
+- Pure helpers in `src/lib/images/`: `validateImageBlob` (5 MB cap + four-MIME whitelist), `dataUrlToBlob` (sync), `blobToDataUrl` (async via `FileReader`), `decodeImageDimensions` (`createImageBitmap` with `Image()` fallback). [+19 unit tests across 4 files]
+- Entities: `JournalImage` (Dexie row, `blob: Blob`) and `JournalImageExported` (wire format, `dataUrl: string`) — two shapes per ADR-0008. `imageIds: ReadonlyArray<string>` added to all three `JournalEntry` variants. Pre-7f Dexie rows coerce on read via `entry.imageIds ?? []`; rows self-heal on next upsert.
+- Zod: `imageIds: z.array(z.string()).default([])` on every variant; `images: z.array(JournalImageExportedSchema).default([])` on the export envelope. `formatVersion` unchanged at `1` per ADR-0008.
+- Dexie schema v4: new `images` table keyed by `id`, indexed on `createdAt`. Additive — no `.upgrade()` callback because no existing row needs transforming.
+- `JournalImagesRepo` (`createJournalImagesRepo`): create / getById / remove / removeMany. `journalEntriesRepo.remove` cascade-deletes referenced image rows in the same transaction. [+repo tests]
+- Export pipeline (storage layer): `export-repo` encodes blobs to data URLs via `blobToDataUrl` before handing the snapshot to `buildExport`; `import-repo` decodes data URLs back to blobs via `dataUrlToBlob` inside the existing atomic transaction. Domain (`buildExport` / `mergeImport`) stays pure-synchronous — it sees only the exported wire shape. ImportPanel dry-run summary now shows the image count.
+- Hooks (`@features/journal/hooks/`):
+  - `useJournalImage(imageId)` — resolves an id to a blob URL, manages `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle on mount/unmount and on underlying-blob change.
+  - `useTradeJournalEntry` / `useSessionJournalEntry` / `useStrategyEntry` each gain `addImage(file, buildEntry)` and `removeImage(imageId, buildEntry)` returning the `AddImageResult` discriminated union (`'too-big' | 'wrong-mime' | 'decode' | 'cap' | 'storage'`). `addImage` is serialized via a `pendingRef` promise chain so concurrent paste-multiple-images doesn't race on the `imageIds` baseline.
+  - `useImagePasteHandler(ref, onPaste)` — attaches a `paste` listener to a section ref; consumes only image-typed `clipboardData.items` and falls through for text-only paste so textareas keep working.
+- UI primitives: `ImageUploadButton` (`<label>` wrapping a hidden `<input type="file">` with `aria-label="Add image"` and `accept` whitelist), `ImageGallery` (thumbnail tiles using `useJournalImage`, click-to-open via `<a target="_blank" rel="noopener noreferrer">`, X button per tile, missing-image placeholder when the underlying row vanishes), `ImageBanner` (`role="alert"` mapping `BannerReason → human copy`).
+- All three forms wired (Trade / Session / Strategy): `ImageUploadButton` + `ImageGallery` + `ImageBanner` mounted, `useImagePasteHandler(sectionRef, handleAddImage)` attached, `onDragOver`/`onDrop` `preventDefault` on the form root to suppress browser drop-navigation. [+6 form tests]
+- **Race fix that wasn't in the plan:** `commit` (fired by blur), `handleAddImage` (fired by file-pick / paste), and `handleRemoveImage` were all reading `hook.entry?.id` from the TanStack-Query cache. If the cache hadn't refetched after a recent write, two concurrent paths could both mint fresh UUIDs and create duplicate rows (one with the old `imageIds`, one with the new). All three handlers now `await readLatest()` (a Dexie query) to grab the canonical id / createdAt / imageIds before building the next entry. The flaky tests caught this before it shipped; the race window is small in real browsers (the OS file picker imposes a milliseconds-to-seconds gap between blur and file-pick) but non-zero on slow systems.
+- E2E: `e2e/images-roundtrip.spec.ts` — four tests. (1) file-picker upload + reload + thumbnail persists; (2) upload + delete via X + reload + gone; (3) HEIC rejected with the wrong-mime banner; (4) export → fresh-context import + wallet re-paste + thumbnail persists. [+4 E2E tests]
+- Test infrastructure: factored the jsdom `Blob` / `URL.createObjectURL` polyfills into `src/tests/setup.ts` so every component test gets them.
+- ADR-0008 added to `docs/DECISIONS.md` documenting the four-part architectural bundle (two entity shapes, separate Dexie table, store-as-uploaded, base64-in-JSON without `formatVersion` bump).
+- End state: **428 unit tests across 68 files** (was 360/53 after Session 7e; +68 this session), **17 E2E tests** (was 13; +4). `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm build` all green.
+
+**Decisions made:** ADR-0008 — "Separate `images` Dexie table for journal blob storage." Bundles four interrelated choices into one ADR per the brainstorming spec.
+
+**Deferred / not done:**
+
+- Inline lightbox / fullscreen modal — BACKLOG (`[next]`).
+- Drag-and-drop upload affordance — BACKLOG.
+- Image reorder UI — BACKLOG.
+- Auto-compression / lossless WebP re-encoding for users hitting quota — BACKLOG.
+- Per-image annotation / caption — BACKLOG.
+- ZIP-bundle export format with `JSZip` for multi-GB exports — BACKLOG.
+- Boot-time orphan-image sweep — BACKLOG.
+- `navigator.storage.estimate()` quota UI in Settings — BACKLOG.
+- Thumbnail chips on virtualized list surfaces (TradeHistoryList, JournalPanel sessions, /strategies rows) — BACKLOG.
+- Saved-image preview in the ImportPanel dry-run table — BACKLOG.
+- Quota-pressure copy when fillsCache writes start failing — BACKLOG (`[soon]`).
+- Synthesized clipboard-paste E2E coverage — replaced by upload+delete-roundtrip; paste integration is unit-tested in `useImagePasteHandler.test.tsx` because Playwright's synthetic `ClipboardEvent` strips `clipboardData` for security in some Chromium builds.
+
+**Gotchas for next session:**
+
+- The plan's hand-coded `TINY_PNG_BYTES` array (67 bytes) was malformed — the IDAT chunk was missing 3 bytes of compressed data, so `decodeImageDimensions` rejected it. Replaced with a generated 70-byte 1×1 RGBA PNG. The HEIC test masked this initially because validation rejects on MIME *before* decoding. **If you ever embed binary fixtures inline in TypeScript, generate them with code (e.g., a `node -e` zlib + CRC32 round-trip) — don't hand-write bytes.**
+- `addImage(file, buildEntry: (newImageId) => Entry)` is a mouthful but the `buildEntry` callback is required: it lets the hook serialize concurrent calls (paste-multiple-images) without each caller racing on the `imageIds` baseline. Don't "simplify" the signature to take an entry object — the single source of truth for the next id is inside the `pendingRef`-chained closure.
+- `commit` / `handleAddImage` / `handleRemoveImage` all `await readLatest()` (a Dexie query) before building the next entry. This protects against the cache-stale race documented above. The ID, `createdAt`, and `imageIds` baseline must come from `readLatest()`, not from `hook.entry`.
+- `entry.imageIds ?? []` coercion is required everywhere a pre-7f Dexie row is read (entry hook hydration, gallery render, form draft init). Pre-7f rows have `imageIds === undefined`; rows self-heal on next upsert.
+- Cascade-delete is in `journalEntriesRepo.remove` only. Direct `db.journalEntries.delete(id)` calls (none today) would orphan image rows. If a future code path needs raw delete, mirror the cascade.
+- jsdom does not implement `createImageBitmap`; tests that decode dimensions either mock the function or rely on the `Image()` fallback in `decodeImageDimensions`. Component tests get `Blob` / `URL.createObjectURL` polyfills from `src/tests/setup.ts`.
+- Dexie v3 → v4 is a one-way bump; v3 → v4 upgrades silently on first open.
+- The four-MIME whitelist (PNG / JPEG / WebP / GIF) is canonical. HEIC / AVIF / SVG / BMP are rejected with the `wrong-mime` banner. Adding a MIME means updating `ALLOWED_MIMES` in `validateImageBlob.ts` AND the `JournalImageMime` literal union AND the `accept` attribute on `ImageUploadButton`.
+- The `aria-label="Add image"` on the file `<input>` is the canonical E2E selector. If a future redesign changes the affordance, keep that label intact or rewrite the spec.
+
+**Invariants assumed:**
+
+- Every blob in `db.images` has been validated by `validateImageBlob` (MIME whitelist + size cap) before insertion. No code path bypasses validation.
+- Cascade delete via `journalEntriesRepo.remove` is the only path that removes images by entry. Manual single-image deletes go through `hook.removeImage`.
+- `buildExport` and `mergeImport` never see a `Blob`. Encoding (Blob → dataUrl) lives in `export-repo`; decoding (dataUrl → Blob) lives in `import-repo`. Domain stays pure-synchronous.
+- Pre-7f export files parse cleanly via `.optional()` / `.default([])` on the new fields. `formatVersion` stays `1`.
+- Orphan rows in `db.images` (uploaded blob, journal entry never saved due to tab-close) are tolerated. A boot-time sweep is BACKLOG.
+- IndexedDB quota is shared with `fillsCache`. Quota-pressure UX is BACKLOG.
+
+---

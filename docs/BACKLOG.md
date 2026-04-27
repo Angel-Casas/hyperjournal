@@ -190,7 +190,6 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 
 ## Session 7e deferrals
 
-- `[next]` Screenshots — Session 7f.
 - `[maybe]` Tag filtering on list surfaces. Multi-tag AND vs OR semantics, filter-control UX (chip-strip vs dropdown vs search bar), composition with existing filters. Real design work; own session.
 - `[maybe]` Tag management UI — rename, merge, archive. Phase 1 data volumes make find-and-replace practical; revisit when a user reports confused vocabulary.
 - `[maybe]` `*tags` Dexie multiEntry index. Needed when tag-filter or tag-count reach enough data volume to matter.
@@ -198,3 +197,20 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` Paste-comma-separated bulk entry — `"breakout, fomc, macro"` in a single paste fans out to three chips.
 - `[maybe]` Tag-color customization. Currently all chips are neutral; custom color-per-tag is product-identity work deserving its own design.
 - `[maybe]` Click-outside-to-close on the `TagInput` suggestion dropdown. Blur already closes it; click-outside matters only if the dropdown needs to survive blur (it doesn't today).
+
+---
+
+## Session 7f deferrals
+
+- `[next]` Inline lightbox / fullscreen modal for thumbnails. Today click-to-open opens the blob URL in a new tab. A modal would keep the user in-app and is the natural next polish step for image UX.
+- `[soon]` Quota-pressure copy when fillsCache writes start failing because images compete for IndexedDB storage. Not 7f-specific but newly relevant — images are the first feature where users can plausibly hit the browser quota with normal use.
+- `[soon]` Synthesized clipboard-paste E2E coverage. The `useImagePasteHandler` unit test covers the wiring; an end-to-end equivalent would catch regressions in section ref attachment / `addEventListener` registration. Blocked on a Playwright pattern that reliably populates `clipboardData` in synthetic events across Chromium versions (the constructor strips it for security in some builds).
+- `[maybe]` Drag-and-drop upload affordance. Forms already `preventDefault` `dragover`/`drop` to suppress browser navigation; turning that into a drop zone is additive UX work.
+- `[maybe]` Image reorder UI (drag-to-reorder thumbnails). `imageIds` is already an ordered array; UI is the only missing piece.
+- `[maybe]` Auto-compression / lossless WebP re-encoding for users hitting browser quota. Rejected up-front in ADR-0008 for lossy variants because chart screenshots are detail-heavy; lossless WebP is a quota-only fallback worth doing if real users hit limits.
+- `[maybe]` Per-image annotation / caption. Useful for "this is the entry candle, this is where I bailed" annotations on a chart screenshot.
+- `[maybe]` ZIP-bundle export format with `JSZip`. Rejected in ADR-0008 because the JSZip dependency is significant for the ~25 MB worst-case single-file export the existing pipeline handles. Revisit only if real users hit multi-GB exports.
+- `[maybe]` Boot-time orphan-image sweep — pick up `db.images` rows whose id is in no entry's `imageIds`. Tab-close mid-upload is the canonical creation path. Cheap to implement; defer until orphans become measurable.
+- `[maybe]` `navigator.storage.estimate()` UI in Settings — show usage and remaining quota. Useful preventative UX before quota errors fire.
+- `[maybe]` Thumbnail chips on virtualized list surfaces (TradeHistoryList, JournalPanel session rows, /strategies rows). Virtualizer's fixed row height makes layout fiddly but doable.
+- `[maybe]` Saved-image preview in the ImportPanel dry-run table. Today the dry-run shows counts only; a small preview strip would help users sanity-check the import.

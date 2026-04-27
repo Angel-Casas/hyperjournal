@@ -253,3 +253,43 @@ Use the raw `echarts` package and write `src/lib/charts/EChartsBase.tsx` — a t
 - Invariant: `EChartsBase` never constructs or mutates option objects — that is the consumer's job. This keeps the wrapper chart-type-agnostic and the consumer's data flow pure.
 
 ---
+
+## ADR-0008: Separate `images` Dexie table for journal blob storage
+
+- **Date:** 2026-04-25
+- **Status:** Accepted
+- **Author:** Claude (phase-1 session 7f execution)
+
+### Context
+
+Phase 1 §11.8 calls for image attachments on journal entries. Four design forces converge: (1) where do bytes live (embedded on the entry row, or a separate table); (2) what processing happens on upload (store as-uploaded, or compress/transcode); (3) how images cross the export-format boundary while keeping `domain/export` pure-synchronous per CLAUDE.md §3 rule 2; (4) whether the export envelope's `formatVersion` must bump. Each axis has plausible alternatives, so the bundle deserves a single ADR rather than four scattered decisions.
+
+### Decision
+
+Adopt a four-part bundle:
+
+1. **Two image entity shapes.** `JournalImage` (Dexie row, `blob: Blob`) inside `lib/storage/`; `JournalImageExported` (wire format, `dataUrl: string`) everywhere else. Forced because `buildExport` is pure-synchronous and base64 encoding via `FileReader` is async I/O — encoding is the export-repo's responsibility, not the domain layer's.
+2. **Separate `images` Dexie table** (Dexie schema v4) keyed by id, indexed on `createdAt`. Journal entries reference by `imageIds: ReadonlyArray<string>`. Cascade delete is in the entries-repo's `remove` path — it deletes referenced image rows in the same transaction.
+3. **Store as-uploaded** with a 5 MB cap and a four-MIME whitelist (PNG / JPEG / WebP / GIF). No auto-compression, no transcoding, no canvas round-trip.
+4. **Base64-embed in single-file JSON export, `formatVersion` stays `1`.** New fields on the envelope (`data.journalEntries[].imageIds`, `data.images`) are additive and forward-compatible per CONVENTIONS.md §13.
+
+### Alternatives considered
+
+- **Embed blobs on the journal-entry row.** Rejected: every journal-table read (`useAllTags`'s scan, `useJournalTagsByTradeId`, `listAll`) would haul blob bytes through memory for no reason, and orphan cleanup becomes a "rows whose entry is gone" sweep instead of a referential check.
+- **One entity shape with `blob | dataUrl` discriminator.** Rejected: pushes the encoding asymmetry into every consumer and makes type narrowing noisy. A second exported-only shape is cleaner.
+- **Auto-compression to WebP/JPEG q=85 at max 1920px (or lossless WebP re-encode).** Rejected: trade-chart screenshots are detail-heavy (price labels, indicator values); lossy compression reduces legibility. Lossless re-encoding adds canvas round-tripping for modest gains.
+- **ZIP-bundle export (`data.json` + `images/<id>.png`) via `JSZip`.** Rejected: keeping `buildExport` / `parseExport` / `applyMerge` intact is high-value; JSZip is a significant dependency for the ~25 MB worst-case single-file export the existing pipeline already handles. Logged in BACKLOG if multi-GB exports ever surface.
+- **Bump `formatVersion` to 2.** Rejected: additive optional fields are forward-compatible. Pre-7f files parse cleanly via `.optional()` / `.default([])` on the new fields. A bump is reserved for breaking changes.
+
+### Consequences
+
+- Easier: all `Blob` / `FileReader` / `atob` Web-API touches are confined to `lib/storage/export-repo.ts` and `lib/storage/import-repo.ts`. `domain/export` (`buildExport`, `mergeImport`) stays pure-synchronous.
+- Easier: pre-7f exports continue to parse cleanly without a migration. Pre-7f Dexie rows coerce on read (`entry.imageIds ?? []`) and self-heal on next upsert.
+- Harder: the entry-hook's `addImage(file, buildEntry: (newImageId) => Entry)` signature must serialize concurrent calls (paste-multiple-images) via a `pendingRef` promise chain so two adds don't race on the `imageIds` baseline. Documented inline in the hook.
+- Harder: IndexedDB quota is shared with `fillsCache`; quota-pressure UX (`navigator.storage.estimate()` surfaced in Settings) is BACKLOG.
+- Invariant: every blob in `db.images` has been validated by `validateImageBlob` (MIME whitelist + size cap) before insertion. Cascade delete via `journalEntriesRepo.remove` is the only path that removes images by entry. Orphan rows can exist after a tab-close mid-upload; that is acceptable and a boot-time sweep is BACKLOG.
+- Invariant: `buildExport` and `mergeImport` never see a `Blob`. Encoding (Blob → dataUrl) and decoding (dataUrl → Blob) live in `export-repo` and `import-repo` respectively.
+
+**Spec:** `docs/superpowers/specs/2026-04-25-session-7f-screenshots-design.md`.
+
+---
