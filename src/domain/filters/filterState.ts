@@ -1,29 +1,24 @@
 import type { YYYYMMDD } from '@domain/dates/isValidDateString';
+import type {
+  DateRangePreset,
+  FilterState,
+  Outcome,
+  Side,
+  Status,
+} from '@entities/filter-state';
 
-export type DateRangePreset = '7d' | '30d' | '90d' | '1y' | 'all';
-export type Side = 'all' | 'long' | 'short';
-export type Status = 'all' | 'closed' | 'open';
-export type Outcome = 'all' | 'winner' | 'loser';
-
-export type DateRange =
-  | { kind: 'preset'; preset: DateRangePreset }
-  | { kind: 'custom'; from: YYYYMMDD; to: YYYYMMDD };
-
-export type FilterState = {
-  dateRange: DateRange;
-  coin: string | null;
-  side: Side;
-  status: Status;
-  outcome: Outcome;
-};
-
-export const DEFAULT_FILTER_STATE: FilterState = {
-  dateRange: { kind: 'preset', preset: 'all' },
-  coin: null,
-  side: 'all',
-  status: 'all',
-  outcome: 'all',
-};
+// Re-export so callers that already import from this module keep working.
+// Definitions live in entities/ so lib/validation can also depend on them
+// without violating the lib → domain boundary rule.
+export type {
+  DateRange,
+  DateRangePreset,
+  FilterState,
+  Outcome,
+  Side,
+  Status,
+} from '@entities/filter-state';
+export { DEFAULT_FILTER_STATE } from '@entities/filter-state';
 
 export function isDefault(state: FilterState): boolean {
   return (

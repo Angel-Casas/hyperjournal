@@ -6,13 +6,22 @@ import {
   type Outcome,
   type Side,
   type Status,
-} from '@domain/filters/filterState';
-import { isValidDateString, type YYYYMMDD } from '@domain/dates/isValidDateString';
+} from '@entities/filter-state';
 
 const PresetSchema = z.enum(['7d', '30d', '90d', '1y']);
 const SideSchema = z.enum(['long', 'short']);
 const StatusSchema = z.enum(['closed', 'open']);
 const OutcomeSchema = z.enum(['winner', 'loser']);
+
+// YYYY-MM-DD with valid month/day. Mirrors @domain/dates/isValidDateString
+// without crossing the lib → domain boundary.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function isValidDate(s: string): boolean {
+  if (!DATE_RE.test(s)) return false;
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.toISOString().slice(0, 10) === s;
+}
 
 export function parseFilterStateFromSearchParams(
   params: URLSearchParams,
@@ -45,8 +54,8 @@ function parseDateRange(params: URLSearchParams): FilterState['dateRange'] {
   // Custom wins over preset when both valid.
   const from = params.get('from');
   const to = params.get('to');
-  if (from && to && isValidDateString(from) && isValidDateString(to)) {
-    return { kind: 'custom', from: from as YYYYMMDD, to: to as YYYYMMDD };
+  if (from && to && isValidDate(from) && isValidDate(to)) {
+    return { kind: 'custom', from, to };
   }
   const range = params.get('range');
   if (range) {

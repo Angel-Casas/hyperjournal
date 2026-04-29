@@ -50,9 +50,10 @@ export function FiltersDrawer({
   onChange,
   availableCoins,
 }: Props) {
-  const isCustom = state.dateRange.kind === 'custom';
-  const customFrom = isCustom ? state.dateRange.from : '';
-  const customTo = isCustom ? state.dateRange.to : '';
+  const dr = state.dateRange;
+  const isCustom = dr.kind === 'custom';
+  const customFrom = dr.kind === 'custom' ? dr.from : '';
+  const customTo = dr.kind === 'custom' ? dr.to : '';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
