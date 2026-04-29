@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { ZodError } from 'zod';
 import { HyperliquidApiError } from '@lib/api/hyperliquid';
 import { isValidWalletAddress } from '@domain/wallets/isValidWalletAddress';
@@ -12,8 +12,22 @@ import {
   WalletHeader,
   WalletMetricsGrid,
 } from '@features/wallets';
+import { FiltersDrawer } from '@features/wallets/components/FiltersDrawer';
+import { ActiveFilterChips } from '@features/wallets/components/ActiveFilterChips';
 import { useJournalEntryIds, useJournalTagsByTradeId } from '@features/journal';
 import { Button } from '@lib/ui/components/button';
+import { applyFilters } from '@domain/filters/applyFilters';
+import {
+  DEFAULT_FILTER_STATE,
+  countActive,
+  isDefault,
+  type FilterState,
+} from '@domain/filters/filterState';
+import {
+  parseFilterStateFromSearchParams,
+  serializeFilterStateToSearchParams,
+} from '@lib/validation/filterState';
+import { computeTradeStats } from '@domain/metrics/computeTradeStats';
 import type { WalletAddress } from '@entities/wallet';
 
 type ErrorCopy = {
@@ -79,9 +93,36 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
 
   useEffect(() => {
     save.mutate({ address, label: null, addedAt: Date.now() });
-    // Mutation identity changes every render; intentional dep omission.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterState = useMemo(
+    () => parseFilterStateFromSearchParams(searchParams),
+    [searchParams],
+  );
+  const setFilterState = useCallback(
+    (next: FilterState) => {
+      setSearchParams(serializeFilterStateToSearchParams(next), { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const filteredTrades = useMemo(
+    () => applyFilters(metrics.trades, filterState),
+    [metrics.trades, filterState],
+  );
+  const filteredStats = useMemo(
+    () =>
+      isDefault(filterState) ? metrics.stats : computeTradeStats(filteredTrades),
+    [filterState, metrics.stats, filteredTrades],
+  );
+  const availableCoins = useMemo(
+    () => Array.from(new Set(metrics.trades.map((t) => t.coin))).sort(),
+    [metrics.trades],
+  );
+  const hasActiveFilters = !isDefault(filterState);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const errorCopy = errorCopyFor(metrics.error);
 
@@ -93,7 +134,21 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
         onRefresh={() => {
           void metrics.refresh();
         }}
+        onOpenFilters={() => setDrawerOpen(true)}
+        filterCount={countActive(filterState)}
       />
+
+      <FiltersDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        state={filterState}
+        onChange={setFilterState}
+        availableCoins={availableCoins}
+      />
+
+      {hasActiveFilters && (
+        <ActiveFilterChips state={filterState} onChange={setFilterState} />
+      )}
 
       {metrics.isLoading && (
         <section className="rounded-lg border border-border bg-bg-raised p-6">
@@ -128,14 +183,16 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
 
       {metrics.stats && (
         <>
-          <WalletMetricsGrid stats={metrics.stats} />
-          <EquityCurveChart trades={metrics.trades} />
-          <PnlCalendarChart trades={metrics.trades} />
+          {filteredStats && <WalletMetricsGrid stats={filteredStats} />}
+          <EquityCurveChart trades={filteredTrades} />
+          <PnlCalendarChart trades={filteredTrades} />
           <TradeHistoryList
-            trades={metrics.trades}
+            trades={filteredTrades}
             address={address}
             tradeIdsWithNotes={tradeIdsWithNotes}
             tradeTagsByTradeId={tagsByTradeId}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={() => setFilterState(DEFAULT_FILTER_STATE)}
           />
         </>
       )}
