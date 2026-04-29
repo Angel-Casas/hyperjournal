@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TradeHistoryList } from './TradeHistoryList';
@@ -89,6 +90,24 @@ describe('TradeHistoryList', () => {
     // wiring without throwing.
     expect(screen.getByRole('heading', { name: /trade history/i })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /trade history/i })).toBeInTheDocument();
+  });
+
+  it('shows the no-trades-match copy + Clear all when filters active and no trades', async () => {
+    const user = userEvent.setup();
+    const onClearFilters = vi.fn();
+    render(
+      wrap(
+        <TradeHistoryList
+          trades={[]}
+          address={ADDR}
+          hasActiveFilters={true}
+          onClearFilters={onClearFilters}
+        />,
+      ),
+    );
+    expect(screen.getByText(/no trades match these filters/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+    expect(onClearFilters).toHaveBeenCalled();
   });
 
   it('accepts the tradeTagsByTradeId prop and renders without crashing', () => {

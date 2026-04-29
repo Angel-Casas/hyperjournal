@@ -25,6 +25,13 @@ type Props = {
    * tradeIdsWithNotes. Defaults to an empty map.
    */
   tradeTagsByTradeId?: ReadonlyMap<string, ReadonlyArray<string>>;
+  /**
+   * When true, the empty-state copy switches from "No trades yet" to
+   * "No trades match these filters" and (if onClearFilters is supplied)
+   * shows a Clear all button.
+   */
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 };
 
 const ROW_HEIGHT = 40;
@@ -41,6 +48,8 @@ export function TradeHistoryList({
   address,
   tradeIdsWithNotes = EMPTY_IDS,
   tradeTagsByTradeId = EMPTY_TAGS_MAP,
+  hasActiveFilters = false,
+  onClearFilters,
 }: Props) {
   const sorted = useMemo(
     () =>
@@ -61,6 +70,22 @@ export function TradeHistoryList({
   });
 
   if (sorted.length === 0) {
+    if (hasActiveFilters) {
+      return (
+        <div className="flex h-32 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-bg-raised text-sm text-fg-subtle">
+          <p>No trades match these filters.</p>
+          {onClearFilters && (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="rounded-md border border-border bg-bg-overlay px-3 py-1 text-xs text-fg-base ring-offset-bg-base hover:bg-bg-overlay/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="flex h-24 items-center justify-center rounded-lg border border-border bg-bg-raised text-sm text-fg-subtle">
         No trades yet.
