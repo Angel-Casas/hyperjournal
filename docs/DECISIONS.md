@@ -293,3 +293,33 @@ Adopt a four-part bundle:
 **Spec:** `docs/superpowers/specs/2026-04-25-session-7f-screenshots-design.md`.
 
 ---
+
+## ADR-0009: Adopt `@radix-ui/react-dialog` for the Sheet/Drawer primitive
+
+- **Date:** 2026-04-29
+- **Status:** Accepted
+- **Author:** Claude (phase-2 session 8a planning)
+
+### Context
+
+Session 8a needs a right-side drawer for the filter panel. The project's UI primitives so far (`button`, `input`, `label`, `metric-card`, `tag-input`, `tag-chip-list`) are hand-written in shadcn style but no Radix package was installed yet. CLAUDE.md §2 lists "shadcn/ui (Radix primitives)" as the approved stack — so a Radix dep is in-stack, but it is the first one and worth recording the choice for future readers (subsequent dialogs / popovers / dropdown menus / tooltips will reuse this pattern).
+
+### Decision
+
+Add `@radix-ui/react-dialog` and create a `Sheet` primitive at `src/lib/ui/components/sheet.tsx` — a thin shadcn-style wrapper exporting `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `SheetClose` over `Dialog.Root` / `Dialog.Portal` / `Dialog.Overlay` / `Dialog.Content` / `Dialog.Close`. Position is right-side on desktop and bottom on small viewports; controlled via the `side` prop. No Framer Motion in 8a — Radix's CSS data-attributes drive the open/closed state and Tailwind `transition-transform` handles the slide animation.
+
+### Alternatives considered
+
+- **Hand-roll a custom drawer.** Rejected: focus trap, scroll lock, escape-to-close, overlay click-out, portal mounting, and `aria-modal` semantics are 200+ LOC of fiddly accessibility work. Radix gives us all of it for free.
+- **Headless UI.** Rejected: would introduce a second component-primitive ecosystem alongside the shadcn convention CLAUDE.md §2 already pins.
+- **Framer Motion `AnimatePresence` for the slide.** Rejected for 8a: pure CSS transitions are sufficient and avoid coupling the primitive to Framer's animation lifecycle. Revisit if motion design wants spring physics.
+
+### Consequences
+
+- Easier: `Dialog`, `Popover`, `DropdownMenu`, `Tooltip` are now incremental adds (each is a new `@radix-ui/react-X` install + a thin wrapper file).
+- Harder: Radix versions will need bumping over time; lockfile and peer-dep management are now part of the project's maintenance load.
+- Invariant: the Sheet primitive stays presentation-only; it does not own filter state, drawer-open state, or any business logic. Consumers control `open` / `onOpenChange`.
+
+**Spec:** `docs/superpowers/specs/2026-04-28-session-8a-filters-design.md`.
+
+---
