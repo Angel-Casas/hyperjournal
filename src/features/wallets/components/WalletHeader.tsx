@@ -7,9 +7,17 @@ type Props = {
   address: WalletAddress;
   isFetching: boolean;
   onRefresh: () => void;
+  onOpenFilters: () => void;
+  filterCount: number;
 };
 
-export function WalletHeader({ address, isFetching, onRefresh }: Props) {
+export function WalletHeader({
+  address,
+  isFetching,
+  onRefresh,
+  onOpenFilters,
+  filterCount,
+}: Props) {
   return (
     <header className="flex items-center justify-between gap-4">
       <div className="min-w-0">
@@ -26,6 +34,21 @@ export function WalletHeader({ address, isFetching, onRefresh }: Props) {
         >
           <RefreshIcon className={cn('h-4 w-4', isFetching && 'animate-spin')} />
           Refresh
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onOpenFilters}
+          aria-label={
+            filterCount > 0 ? `Filters (${filterCount} active)` : 'Filters'
+          }
+        >
+          Filters
+          {filterCount > 0 && (
+            <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent/20 px-1.5 text-xs font-semibold text-fg-base">
+              {filterCount}
+            </span>
+          )}
         </Button>
         <Link
           to="/settings"
