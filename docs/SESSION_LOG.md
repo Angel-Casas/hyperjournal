@@ -720,3 +720,62 @@ Every session **must** add an entry before closing. The goal is that a future se
 - IndexedDB quota is shared with `fillsCache`. Quota-pressure UX is BACKLOG.
 
 ---
+
+## 2026-04-29 — Phase 2 Session 8a: Filter panel (5 dimensions)
+
+**Session goal:** Open Phase 2 with the filter panel from plan §11.5. Five dimensions on `/w/:address` (date range with presets + custom, coin, side, status, outcome), URL search params as the source of truth, drawer + chip strip UI, uniform pre-filter across all four data surfaces.
+
+**Done:**
+
+- `src/entities/filter-state.ts`: `FilterState` type + `DateRange` discriminated union (`preset` / `custom`) + `DEFAULT_FILTER_STATE` constant. Lives in entities/ so both `lib/validation` and `domain/filters` can depend on it without violating the lib → domain boundary rule.
+- `src/domain/filters/`: pure helpers — `isDefault`, `countActive`, `setCoin / setSide / setStatus / setOutcome / setDateRangePreset / setCustomDateRange`. Re-exports types from entities/. [+8 tests]
+- `src/domain/filters/resolveDateRange.ts`: preset → ms boundaries with injected `now`; custom range UTC midnight from / end-of-day-exclusive to. [+7 tests]
+- `src/domain/filters/applyFilters.ts`: main function + 5 exported predicates (`matchesDate / matchesCoin / matchesSide / matchesStatus / matchesOutcome`) composed as logical AND. Identity-returns the input on default state (short-circuit). Domain coverage 100% on `src/domain/filters/**`. [+10 tests]
+- `src/lib/validation/filterState.ts`: `parseFilterStateFromSearchParams` + `serializeFilterStateToSearchParams`. Round-trip identity for representative samples. Garbage params silently default per-dimension; custom range wins over preset when both valid; default state produces zero params. Inlined a `DATE_RE` regex (avoids reaching into `@domain/dates`). [+22 tests]
+- ADR-0009 added — first Radix primitive (`@radix-ui/react-dialog`) + the project's `Sheet` primitive at `src/lib/ui/components/sheet.tsx`. Right-side and bottom variants, semantic Tailwind tokens, `aria-describedby={undefined}` to silence Radix's optional-description warning. [+3 tests]
+- `src/lib/ui/components/filter-chip.tsx`: clickable chip with X button + `aria-label`. New primitive — different from `tag-chip-list` which is read-only. [+3 tests]
+- `src/features/wallets/components/FiltersDrawer.tsx`: 5 stacked control sections (preset row + custom date inputs, native `<select>` for coin, three radio-group segmented controls). Live-apply: every interaction calls `onChange(nextState)`. Inline `Section` / `PresetButton` / `SegmentedControl` subcomponents. [+6 tests]
+- `src/features/wallets/components/ActiveFilterChips.tsx`: renders one `FilterChip` per non-default dimension above the metrics grid. Each chip's X resets that dimension; a top-level "Clear all" link resets to defaults. Renders `null` when state is default. [+5 tests]
+- `WalletHeader.tsx`: two new required props (`onOpenFilters`, `filterCount`); count badge appears when `filterCount > 0`; aria-label communicates the active count. [+3 tests on top of existing 4]
+- `TradeHistoryList.tsx`: two new optional props (`hasActiveFilters`, `onClearFilters`); empty-state copy switches from "No trades yet" to "No trades match these filters" with a Clear-all action when filters are active. [+1 test]
+- `WalletView.tsx`: wires URL ↔ FilterState ↔ `applyFilters` ↔ four data surfaces. `availableCoins` from unfiltered trades. `filteredStats` recomputed from filtered subset (skipped when default to preserve reference identity for `WalletMetricsGrid`). `setSearchParams(replace: true)` so chip-X-click doesn't pollute browser history.
+- E2E: `e2e/filters-roundtrip.spec.ts` — apply-and-share-via-URL, empty-result-with-clear-all, custom-date reload-persistence. [+3 E2E tests]
+- End state: **496 unit tests across 76 files** (was 428 / 68 after Session 7f; +68 this session), **20 E2E tests** (was 17; +3). `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm build` all green.
+
+**Decisions made:** ADR-0009 — first Radix primitive (`@radix-ui/react-dialog`) + Sheet wrapper.
+
+**Deferred / not done:**
+
+- Session 8b — the other 7 dimensions from plan §11.5: hold-duration, leverage, time-of-day, day-of-week, tagged strategy, stop-loss usage, size range. Composes additively on `applyFilters` and `FilterState`.
+- Calendar-cell click → `from=/to=` filter — BACKLOG (already flagged; unblocked now).
+- Multi-coin select — BACKLOG (`coin: string[]` widening).
+- Saved filter presets in Dexie — BACKLOG.
+- Filter presets shareable via short ID — BACKLOG.
+- Push-mode `setSearchParams` so back-button = filter undo — BACKLOG.
+- Filter analytics ("you most often filter to X; want to make that default?") — BACKLOG.
+- Custom date picker primitive (replacing `<input type="date">`) — BACKLOG (Phase 5 polish).
+- Empty-result UX on equity curve / calendar (filter-aware copy) — BACKLOG.
+- WalletView component-level tests for the URL ↔ filter pipeline — covered by the E2E spec; jsdom can't exercise the route + virtualizer + ECharts together.
+
+**Gotchas for next session:**
+
+- The plan originally placed `FilterState` in `@domain/filters/filterState`. The boundaries rule forbids `lib → domain`, so `lib/validation/filterState` couldn't import it from there. The fix relocated the types to `src/entities/filter-state.ts` per CONVENTIONS §7 + ADR-0006; `@domain/filters/filterState` now re-exports them for backward compat with feature/component callers. **When adding new types that need to be visible in `lib/validation/`, they must live in `entities/` from the start.**
+- `lib/validation/filterState.ts` inlines a `DATE_RE` regex rather than importing `isValidDateString` from `@domain/dates` (lib → domain forbidden). The two date validators must stay in sync; if `isValidDateString` ever changes its strictness, mirror the change in `lib/validation/filterState.ts`.
+- TypeScript can't narrow a discriminated union through a separate `isCustom` boolean variable — `state.dateRange.kind === 'custom'` must be inline at each access site for the narrowing to work. `FiltersDrawer.tsx` uses `dr.kind === 'custom' ? dr.from : ''` directly.
+- `setSearchParams(next, { replace: true })` is the live-apply default. If we ever switch to push-mode (back-button = filter undo), the WalletView call site is the only place that changes.
+- `availableCoins` is derived from `metrics.trades` (the unfiltered set), not `filteredTrades`. Otherwise narrowing to BTC removes ETH from the dropdown and the user can't widen back. The `useMemo` deps reflect this.
+- `filteredStats` short-circuits to `metrics.stats` when state is default, preserving the same `stats` reference across renders. Important for `WalletMetricsGrid` not to re-render needlessly. If a future change adds a stats-affecting dimension that *isn't* a trade-array filter, this short-circuit needs revisiting.
+- Radix Dialog emits a runtime warning if `Description` is missing; suppressed via `aria-describedby={undefined}` on `Dialog.Content`. Future Sheet consumers can opt back into a description by passing the prop.
+- The `Sheet` primitive renders its content in a portal. Tests that mount a `FiltersDrawer` need to be aware that `screen.queryByText` searches the whole document, not just the test render root.
+- `PresetButton` / `SegmentedControl` are inline subcomponents in `FiltersDrawer.tsx`. If a third drawer wants segmented controls, extract to `@lib/ui/components/`.
+
+**Invariants assumed:**
+
+- URL is the source of truth for filter state. `WalletView` never reads filter state from anywhere else; the `useMemo` chain rebuilds on every `searchParams` change.
+- `applyFilters(trades, DEFAULT_FILTER_STATE)` returns the input array by reference (identity equality). Callers may rely on this for memoization.
+- Garbage URL params self-heal via per-dimension Zod `safeParse` fallback to the default for that dimension. No throw, no error UI.
+- `FilterState` is immutable — every setter returns a new object. Direct mutation is forbidden (and prevented by `Readonly<>` not being applied; the convention is policed by code review).
+- `availableCoins` reflects the wallet's distinct coins from the unfiltered trades. Coin filter narrows trades but NEVER narrows the dropdown options.
+- Custom date `to` is end-of-day-exclusive in `applyFilters` — `to=2026-04-28` matches up through `2026-04-28T23:59:59.999Z`.
+
+---

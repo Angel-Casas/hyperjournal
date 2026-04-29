@@ -80,7 +80,6 @@ Items explicitly deferred by the phasing plan. Listed here only as a reminder th
 
 - `[later]` Tier-2 metrics (Sharpe-like, Kelly, risk of ruin, stop-loss usage rate). Roadmap §19.2. Held for a later analytics session once Tier-1 is in real use and we have a feel for which secondary metrics matter.
 - `[soon]` Per-coin breakdown of `TradeStats`. Right now stats are walletwide; users will likely want "show BTC-only metrics" as a filter. Add a `computeTradeStatsByCoin(trades): Map<coin, TradeStats>` helper.
-- `[soon]` Filter panel on `/w/:address` (date range, asset, side, closed-vs-open). Plan §11.5. Filters compose by pre-filtering `trades` before `computeTradeStats`. Landed after Session 4b so the chart filters apply consistently.
 - `[maybe]` Persisted `WalletAnalyticsSnapshot` in Dexie (plan §13). Today `useWalletMetrics` recomputes on every mount; that's cheap for 2000 fills but would matter if we ever fetch more history. Revisit when performance shows it's needed.
 - `[soon]` Break-even trades (`realizedPnl === 0`) are currently excluded from both winners and losers in `computeTradeStats`. That's standard practice but worth surfacing to users — consider a `breakEvenCount` field on `TradeStats`.
 - `[maybe]` "Profit factor is null" UX — a card that says `—` for profit factor can be confusing when all trades are wins (there IS a meaningful answer: infinity). Consider rendering `∞` instead, or a subtext like `"no losing trades"`.
@@ -214,3 +213,20 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` `navigator.storage.estimate()` UI in Settings — show usage and remaining quota. Useful preventative UX before quota errors fire.
 - `[maybe]` Thumbnail chips on virtualized list surfaces (TradeHistoryList, JournalPanel session rows, /strategies rows). Virtualizer's fixed row height makes layout fiddly but doable.
 - `[maybe]` Saved-image preview in the ImportPanel dry-run table. Today the dry-run shows counts only; a small preview strip would help users sanity-check the import.
+
+---
+
+## Session 8a deferrals
+
+- `[next]` Session 8b — the other 7 dimensions from plan §11.5: hold-duration bucket, leverage bucket, time-of-day, day-of-week, tagged strategy, stop-loss usage, trade-size range. Composes additively on `applyFilters` and `FilterState`.
+- `[soon]` Calendar-cell click → `from=YYYY-MM-DD&to=YYYY-MM-DD` filter. Already in BACKLOG; unblocked now that filters land.
+- `[soon]` Per-coin breakdown of `TradeStats`. Already in BACKLOG; the coin filter answers the same question but a "BTC only / ETH only / all" split-view in the metrics grid is a different UX.
+- `[maybe]` Multi-coin select (`coin: string[]`). Additive widening of the type. Wait for real demand.
+- `[maybe]` Saved filter presets in Dexie ("My BTC longs"). `userSettings` table extension; needs a small repo + a "Save current as…" affordance.
+- `[maybe]` Filter presets shareable via short ID rather than long URL — `?preset=abc123` resolving locally. Useful when filter URLs grow.
+- `[maybe]` Push-mode `setSearchParams` so browser back-button = filter undo. Opt-in via a settings toggle if users ask for it.
+- `[maybe]` Filter analytics — "you most often filter to BTC + Long; want to make that your default?" Phase 5+ polish.
+- `[maybe]` Hybrid filtering (some surfaces always show full activity) — explicitly rejected for 8a (uniform was chosen). Revisit only if a user surfaces that the calendar's contract feels broken.
+- `[maybe]` Custom date picker primitive (replacing `<input type="date">`). Phase 5 polish; would need an ADR for the dependency choice.
+- `[maybe]` Empty-result UX on charts (equity curve, calendar) — bespoke filter-aware copy is polish.
+- `[maybe]` Component-level WalletView tests for the URL ↔ filter pipeline. The E2E spec covers this end-to-end; jsdom can't run the full route + virtualizer + ECharts in concert.

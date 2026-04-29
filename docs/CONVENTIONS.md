@@ -217,3 +217,15 @@ Rules in CLAUDE.md §3 rule 10 are invariants; this section is patterns.
 ## 16. Binary fixtures
 
 - **Generate, don't hand-write, binary fixtures.** Inline byte arrays (PNGs, GIFs, JPEGs) are easy to mistype and tedious to verify by eye — chunk lengths, CRCs, and signature ordering are unforgiving. Generate the bytes with code (`node -e` + `zlib.deflateSync` + a CRC-32 helper) and paste the resulting array. The Session 7f plan shipped a hand-written 67-byte 1×1 PNG that was missing 3 bytes of IDAT data; the bug was masked because validation rejected on MIME *before* decoding and only surfaced when Playwright hit the decode path.
+
+---
+
+## 17. URL-driven UI state
+
+- **URL search params are the source of truth for shareable, refresh-stable UI state.** Per ADR-0004, addressable state (filters, expanded-view selectors, comparison-mode selections) lives in the URL via `useSearchParams`; non-addressable state (drawer open/closed, hover state) lives in Zustand or component-local `useState`. `WalletView` filter state is the canonical reference.
+- **Live-apply via `replace: true`.** `setSearchParams(next, { replace: true })` on every control change avoids polluting browser history with one entry per chip-X-click. Push-mode (filter-undo via back-button) is opt-in and not the default.
+- **Garbage params self-heal.** URL parsers are written via Zod `safeParse` per-dimension and silently fall back to defaults — never throw, never show an error UI. URLs are typed by humans, copied/pasted, and survive across app versions; resilience is the right default.
+- **Serialize only non-defaults.** Default state produces an empty `URLSearchParams`. This keeps clean URLs for the common case and means "no filter" and "default filter" are observably the same thing.
+- **Custom wins on conflict.** When two encodings of the same dimension are present (e.g., both `range` and `from`/`to`), the more specific encoding wins. Document the rule in each consumer.
+- **Types that cross into `lib/validation` live in `entities/`.** A URL-state type used by both the parser (`lib/validation`) and the consumers (`features/`, `app/`, `domain/`) must live in `entities/` — `lib → domain` is forbidden by the boundaries rule. `src/entities/filter-state.ts` is the reference. The matching `domain/filters/filterState.ts` re-exports the types for the existing call-sites (entities is the canonical home; domain is the helper module).
+- **Inline narrowing for discriminated unions.** TypeScript can't narrow a discriminated union through a separate boolean variable. Write `state.dateRange.kind === 'custom' ? state.dateRange.from : ''` inline at each access site — not `const isCustom = state.dateRange.kind === 'custom'; const from = isCustom ? state.dateRange.from : ''`.
