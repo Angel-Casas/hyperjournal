@@ -92,3 +92,107 @@ describe('FilterState type narrowing', () => {
     }
   });
 });
+
+import {
+  toggleHoldDuration,
+  toggleTimeOfDay,
+  toggleDayOfWeek,
+  toggleTradeSize,
+  clearHoldDuration,
+  clearTimeOfDay,
+  clearDayOfWeek,
+  clearTradeSize,
+} from './filterState';
+
+describe('toggle setters (multi-select)', () => {
+  it('toggleHoldDuration adds when absent', () => {
+    const next = toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp');
+    expect(next.holdDuration).toEqual(['scalp']);
+  });
+
+  it('toggleHoldDuration removes when present', () => {
+    const after1 = toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp');
+    const after2 = toggleHoldDuration(after1, 'scalp');
+    expect(after2.holdDuration).toEqual([]);
+  });
+
+  it('toggleHoldDuration preserves other dimensions', () => {
+    const seeded = setCoin(DEFAULT_FILTER_STATE, 'BTC');
+    const next = toggleHoldDuration(seeded, 'intraday');
+    expect(next.coin).toBe('BTC');
+    expect(next.holdDuration).toEqual(['intraday']);
+  });
+
+  it('toggleDayOfWeek can hold multiple days', () => {
+    let s: FilterState = DEFAULT_FILTER_STATE;
+    s = toggleDayOfWeek(s, 'mon');
+    s = toggleDayOfWeek(s, 'wed');
+    s = toggleDayOfWeek(s, 'fri');
+    expect(new Set(s.dayOfWeek)).toEqual(new Set(['mon', 'wed', 'fri']));
+  });
+
+  it('toggleTimeOfDay returns a new object (immutability)', () => {
+    const next = toggleTimeOfDay(DEFAULT_FILTER_STATE, 'morning');
+    expect(next).not.toBe(DEFAULT_FILTER_STATE);
+  });
+
+  it('toggleTradeSize matches the same shape', () => {
+    const next = toggleTradeSize(DEFAULT_FILTER_STATE, 'large');
+    expect(next.tradeSize).toEqual(['large']);
+  });
+});
+
+describe('clear setters', () => {
+  it('clearHoldDuration empties only that dimension', () => {
+    const seeded = toggleHoldDuration(
+      toggleHoldDuration(setCoin(DEFAULT_FILTER_STATE, 'BTC'), 'scalp'),
+      'intraday',
+    );
+    const cleared = clearHoldDuration(seeded);
+    expect(cleared.holdDuration).toEqual([]);
+    expect(cleared.coin).toBe('BTC');
+  });
+
+  it('clearTimeOfDay / clearDayOfWeek / clearTradeSize empty their own dimensions', () => {
+    let s: FilterState = DEFAULT_FILTER_STATE;
+    s = toggleTimeOfDay(s, 'morning');
+    s = toggleDayOfWeek(s, 'mon');
+    s = toggleTradeSize(s, 'large');
+    expect(clearTimeOfDay(s).timeOfDay).toEqual([]);
+    expect(clearDayOfWeek(s).dayOfWeek).toEqual([]);
+    expect(clearTradeSize(s).tradeSize).toEqual([]);
+  });
+});
+
+describe('isDefault with 8b fields', () => {
+  it('returns false when holdDuration is non-empty', () => {
+    expect(isDefault(toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp'))).toBe(
+      false,
+    );
+  });
+
+  it('returns false when timeOfDay is non-empty', () => {
+    expect(isDefault(toggleTimeOfDay(DEFAULT_FILTER_STATE, 'morning'))).toBe(
+      false,
+    );
+  });
+
+  it('returns false when dayOfWeek is non-empty', () => {
+    expect(isDefault(toggleDayOfWeek(DEFAULT_FILTER_STATE, 'mon'))).toBe(false);
+  });
+
+  it('returns false when tradeSize is non-empty', () => {
+    expect(isDefault(toggleTradeSize(DEFAULT_FILTER_STATE, 'micro'))).toBe(
+      false,
+    );
+  });
+});
+
+describe('countActive with 8b fields', () => {
+  it('counts each non-empty 8b array as 1', () => {
+    let s: FilterState = DEFAULT_FILTER_STATE;
+    s = toggleHoldDuration(s, 'scalp');
+    s = toggleTimeOfDay(s, 'morning');
+    expect(countActive(s)).toBe(2);
+  });
+});
