@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FiltersDrawer } from './FiltersDrawer';
 import {
@@ -111,5 +111,85 @@ describe('FiltersDrawer', () => {
     );
     await user.click(screen.getByRole('button', { name: /clear all/i }));
     expect(onChange).toHaveBeenCalledWith(DEFAULT_FILTER_STATE);
+  });
+});
+
+import {
+  toggleHoldDuration,
+  toggleDayOfWeek,
+} from '@domain/filters/filterState';
+
+describe('FiltersDrawer — 8b sections', () => {
+  function renderOpen(state = DEFAULT_FILTER_STATE, onChange = vi.fn()) {
+    return render(
+      <FiltersDrawer
+        open={true}
+        onOpenChange={() => {}}
+        state={state}
+        onChange={onChange}
+        availableCoins={COINS}
+      />,
+    );
+  }
+
+  it('renders the three group headers', () => {
+    renderOpen();
+    expect(screen.getByRole('heading', { name: /^when$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^what$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /outcome.*shape/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the four 8b MultiBucketControl groups', () => {
+    renderOpen();
+    expect(
+      screen.getByRole('group', { name: /hold duration/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: /time of day/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: /day of week/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: /trade size/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('clicking a hold-duration bucket fires onChange with toggleHoldDuration applied', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderOpen(DEFAULT_FILTER_STATE, onChange);
+    await user.click(
+      screen
+        .getByRole('group', { name: /hold duration/i })
+        .querySelector('button[aria-pressed]')!,
+    );
+    // The first button in the group is "Scalp"
+    expect(onChange).toHaveBeenCalledWith(
+      toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp'),
+    );
+  });
+
+  it('clicking a day chip toggles in dayOfWeek', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderOpen(DEFAULT_FILTER_STATE, onChange);
+    const dowGroup = screen.getByRole('group', { name: /day of week/i });
+    await user.click(dowGroup.querySelector('button[aria-pressed]')!);
+    expect(onChange).toHaveBeenCalledWith(
+      toggleDayOfWeek(DEFAULT_FILTER_STATE, 'mon'),
+    );
+  });
+
+  it('shows aria-pressed=true on already-selected buckets', () => {
+    const seeded = toggleHoldDuration(DEFAULT_FILTER_STATE, 'intraday');
+    renderOpen(seeded);
+    const holdGroup = screen.getByRole('group', { name: /hold duration/i });
+    const intradayBtn = within(holdGroup).getByRole('button', {
+      name: /intraday/i,
+    });
+    expect(intradayBtn).toHaveAttribute('aria-pressed', 'true');
   });
 });
