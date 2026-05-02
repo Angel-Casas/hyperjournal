@@ -230,3 +230,16 @@ Issues surfaced only against the live full-wallet dataset (not the 100-fill comm
 - `[maybe]` Custom date picker primitive (replacing `<input type="date">`). Phase 5 polish; would need an ADR for the dependency choice.
 - `[maybe]` Empty-result UX on charts (equity curve, calendar) — bespoke filter-aware copy is polish.
 - `[maybe]` Component-level WalletView tests for the URL ↔ filter pipeline. The E2E spec covers this end-to-end; jsdom can't run the full route + virtualizer + ECharts in concert.
+
+---
+
+## Session 8b deferrals
+
+- `[next]` Session 8c — stop-loss usage + tagged strategy/setup. Both require joining `TradeJournalEntry` with trades, breaking the current pure-trade-array signature of `applyFilters`. Own session because the join architecture is the substantive new design.
+- `[later]` Leverage bucket. Plan §11.5 hedges with *"if derivable"*. Neither `ReconstructedTrade` nor `RawFill` carries leverage data today; blocked on a data-source decision (compute notional × side as a proxy? add a leverage-tracking pass to reconstruction? require Hyperliquid `clearinghouseState` join?). Revisit once the data path is decided.
+- `[maybe]` Per-bucket chip removal — clicking X on `Day: Mon` removes only Mon. 8b ships dimension-level chip clearing; per-bucket is additive.
+- `[maybe]` Hour-level time-of-day filtering — bypasses 4-band buckets for 24-hour-grid multi-select. Power-user feature; URL grammar (`?hour=7,8,9,14,15,16,21`) and chip rendering would need bespoke handling.
+- `[maybe]` Wallet-relative trade-size quartiles (Q1/Q2/Q3/Q4) as an alternative to absolute USD bins. Useful when comparing wallets of very different sizes on the same UI; thresholds computed from the unfiltered closed-trade set.
+- `[maybe]` "All selected = no filter" UX hint in the drawer when the user has manually selected every bucket of a dimension. Today the chip honestly shows "N selected"; a subtle hint that this is functionally identical to default could reduce confusion.
+- `[maybe]` Bulk-select / clear-all controls inside `MultiBucketControl` (e.g., a "Weekdays" button on day-of-week). Convenience.
+- `[maybe]` Per-dimension provenance markers in chips. 8b chips read like "Hold: scalp" without `derived` badging — same as 8a. Reconsider when journal-derived dimensions land in 8c (stop-loss may carry `inferred` provenance when not journaled).

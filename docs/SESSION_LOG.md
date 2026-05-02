@@ -779,3 +779,60 @@ Every session **must** add an entry before closing. The goal is that a future se
 - Custom date `to` is end-of-day-exclusive in `applyFilters` — `to=2026-04-28` matches up through `2026-04-28T23:59:59.999Z`.
 
 ---
+
+## 2026-05-02 — Phase 2 Session 8b: Filter panel (4 trade-intrinsic dimensions)
+
+**Session goal:** Extend 8a's filter pipeline with the four trade-intrinsic dimensions from plan §11.5: hold-duration bucket, time of day, day of week, and trade-size range. All multi-select. Local timezone for time-of-day and day-of-week; UTC unchanged for date filters.
+
+**Done:**
+
+- `src/entities/filter-state.ts`: 4 new bucket literal types (`HoldDurationBucket` / `TimeOfDayBand` / `DayOfWeek` / `TradeSizeBucket`) + 4 `*_ORDER` constants + extended `FilterState` and `DEFAULT_FILTER_STATE` with `ReadonlyArray` fields.
+- `src/domain/filters/buckets.ts` (new): label + numeric-range constants for hold-duration, time-of-day bands, day-of-week labels, trade-size buckets. Range convention `[lo, hi)`; last bucket `+Infinity`. Compile-time guard against type-vs-id drift. [+8 unit tests]
+- `src/domain/dates/timezone.ts` (new): `hourInTimeZone` / `weekdayIndexInTimeZone` via `Intl.DateTimeFormat`. Pure; tests pass arbitrary IANA `timeZone` for determinism. [+6 unit tests]
+- `src/domain/filters/bucketize.ts` (new): pure id-assignment helpers (`holdDurationBucketOf` / `timeOfDayBandOf` / `dayOfWeekOf` / `tradeSizeBucketOf`). [+17 unit tests]
+- `src/domain/filters/applyFilters.ts`: 4 new predicates (`matchesHoldDuration` / `matchesTimeOfDay` / `matchesDayOfWeek` / `matchesTradeSize`); `Options` extended with optional `timeZone`. Open trades use `now - openedAt`; truncated trades (`avgEntryPx === null`) excluded from any active size filter. [+18 unit tests]
+- `src/domain/filters/filterState.ts`: 4 toggle setters + 4 per-dimension clear setters; `isDefault` and `countActive` extended for the new arrays. [+13 unit tests]
+- `src/lib/validation/filterState.ts`: `parseEnumArrayOr` helper, `sortByCanonical` for serialize, four new param keys (`hold` / `tod` / `dow` / `size`), comma-delimited grammar with canonical-order serialization. URLSearchParams percent-encodes the comma (`%2C`) — round-trip works because `params.get` decodes losslessly. [+22 unit tests]
+- `src/lib/ui/components/multi-bucket-control.tsx` (new): toggle-button-row primitive with `aria-pressed`. Used by all four 8b sections. [+5 unit tests]
+- `src/features/wallets/components/FiltersDrawer.tsx`: reorganized into three semantic groups (`When` / `What` / `Outcome / shape`) with no collapsing; inline `Group` subcomponent; the four new sections wired via `MultiBucketControl`. [+5 unit tests]
+- `src/features/wallets/components/ActiveFilterChips.tsx`: per-dimension chip with inline list when ≤ 3 buckets selected, "N selected" when ≥ 4. Chip X clears the entire dimension. Inline order matches canonical URL order. [+5 unit tests]
+- `src/app/WalletView.tsx`: passes `timeZone` to `applyFilters` resolved once via `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+- E2E: `e2e/filters-multiselect-roundtrip.spec.ts` — apply + URL-share + fresh-context-navigate test, plus impossible-combo (`size=whale&hold=scalp`) + clear-all test. [+2 E2E]
+- End state: **589 unit tests across 80 files** (was 496 / 76 after 8a; +93 this session), **22 E2E tests** (was 20; +2). `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e && pnpm build` all green.
+
+**Decisions made:** none requiring an ADR. Boundary handling for `*_ORDER` constants follows ADR-0006 + the 8a precedent (entities/ owns types crossing the lib/domain split).
+
+**Deferred / not done:**
+
+- Stop-loss usage + tagged strategy/setup — Session 8c (next). Both require joining `TradeJournalEntry` with trades, breaking the pure `applyFilters(trades, state)` signature.
+- Leverage bucket — BACKLOG `[later]`, blocked on data-source decision.
+- Per-bucket chip removal (`Day: Mon` X removes only Mon) — BACKLOG `[maybe]`.
+- Hour-level time-of-day filtering — BACKLOG `[maybe]`.
+- Wallet-relative trade-size quartiles — BACKLOG `[maybe]`.
+- "All selected = no filter" UX hint — BACKLOG `[maybe]`.
+- Bulk-select buttons inside `MultiBucketControl` (e.g., "Weekdays") — BACKLOG `[maybe]`.
+
+**Gotchas for next session:**
+
+- `*_ORDER` constants live in `src/entities/filter-state.ts`, NOT `src/domain/filters/buckets.ts`, because `lib/validation` cannot import from `domain/`. New dimensions in 8c must follow the same split: bucket id literal + ORDER → `entities/`; labels + numeric ranges → `domain/filters/buckets.ts`.
+- `applyFilters`'s `Options` now carries `timeZone`. Defaulting via `Intl.DateTimeFormat().resolvedOptions().timeZone` makes most tests pass without explicitly passing it, but **any test that touches time-of-day or day-of-week MUST pass `timeZone: 'UTC'` explicitly** to avoid environment-dependent flake.
+- Open-trade hold-duration is computed live (`now - openedAt`). The bucket can drift across boundaries as time passes. Tests pass explicit `now` to assert deterministic bucketing.
+- Truncated trades (`avgEntryPx === null`) are excluded from any active size filter and included when default. Mirrors the outcome filter excluding open trades.
+- Canonical-order serialization is enforced on URL writes only. URL → state → URL is canonical even if the state was assembled in non-canonical order (reads preserve source order; rewrites canonicalize).
+- `URLSearchParams.set('hold', 'a,b')` produces `hold=a%2Cb` in the URL string. The percent-encoding is invisible to `params.get('hold')` (which returns `'a,b'`). E2E URL-regex assertions need `%2C`, not `,`.
+- `MultiBucketControl` is generic over the bucket id type. The four call sites in `FiltersDrawer.tsx` parameterize it explicitly via the type of `buckets`. If you reuse the primitive in 8c, mirror this pattern.
+- Drawer `Group` subcomponent is inline to `FiltersDrawer.tsx` (mirrors 8a's `Section` / `PresetButton`). If 8c needs grouped UI elsewhere, extract to `lib/ui/`.
+- The `ActiveFilterChips` `renderArrayChip` helper is local to that file; if 8c's chips need the same multi-select rendering, move the helper to a shared location or copy the pattern.
+- The `vitest.config` / `tsconfig` enables strict-undefined-index. New tests that index into arrays inside loops (`arr[i].field`) need non-null assertions (`arr[i]!.field`). Fixed in `buckets.test.ts` during T7; pattern is established.
+
+**Invariants assumed:**
+
+- URL is the source of truth for filter state.
+- `applyFilters(trades, DEFAULT_FILTER_STATE)` returns the input array by reference (identity equality).
+- Bucket arrays are canonical-ordered on URL serialize (round-trip identity).
+- Bucket boundaries are inclusive-low / exclusive-high; last bucket extends to `+Infinity`.
+- Open-trade hold-duration is live-recalculated against `now`; closed-trade uses stored `holdTimeMs`.
+- Truncated trades (`avgEntryPx === null`) are excluded from any active size-filter; included when default.
+- `availableCoins` reflects the wallet's distinct coins from unfiltered trades (8a invariant preserved).
+
+---
