@@ -109,7 +109,10 @@ function WalletViewInner({ address }: { address: WalletAddress }) {
   );
 
   const filteredTrades = useMemo(
-    () => applyFilters(metrics.trades, filterState),
+    () =>
+      applyFilters(metrics.trades, filterState, {
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
     [metrics.trades, filterState],
   );
   const filteredStats = useMemo(
