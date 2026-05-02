@@ -154,3 +154,149 @@ describe('round-trip identity', () => {
     expect(round).toEqual(state);
   });
 });
+
+import {
+  toggleHoldDuration,
+  toggleTimeOfDay,
+  toggleDayOfWeek,
+  toggleTradeSize,
+} from '@domain/filters/filterState';
+
+describe('parseFilterStateFromSearchParams — 8b array fields', () => {
+  it('parses hold-duration list', () => {
+    const result = parseFilterStateFromSearchParams(sp('hold=scalp,intraday'));
+    expect(result.holdDuration).toEqual(['scalp', 'intraday']);
+  });
+
+  it('parses tod (time-of-day) list', () => {
+    const result = parseFilterStateFromSearchParams(sp('tod=morning,evening'));
+    expect(result.timeOfDay).toEqual(['morning', 'evening']);
+  });
+
+  it('parses dow (day-of-week) list', () => {
+    const result = parseFilterStateFromSearchParams(sp('dow=mon,tue,wed'));
+    expect(result.dayOfWeek).toEqual(['mon', 'tue', 'wed']);
+  });
+
+  it('parses size (trade-size) list', () => {
+    const result = parseFilterStateFromSearchParams(sp('size=large,whale'));
+    expect(result.tradeSize).toEqual(['large', 'whale']);
+  });
+
+  it('drops unknown tokens silently', () => {
+    expect(
+      parseFilterStateFromSearchParams(sp('hold=scalp,bogus,intraday'))
+        .holdDuration,
+    ).toEqual(['scalp', 'intraday']);
+  });
+
+  it('dedups within a list', () => {
+    expect(
+      parseFilterStateFromSearchParams(sp('hold=scalp,scalp,scalp'))
+        .holdDuration,
+    ).toEqual(['scalp']);
+  });
+
+  it('treats empty value as default empty array', () => {
+    expect(parseFilterStateFromSearchParams(sp('hold=')).holdDuration).toEqual(
+      [],
+    );
+  });
+
+  it('parses 8a-only URL with default 8b fields', () => {
+    const result = parseFilterStateFromSearchParams(
+      sp('coin=BTC&status=closed'),
+    );
+    expect(result.holdDuration).toEqual([]);
+    expect(result.timeOfDay).toEqual([]);
+    expect(result.dayOfWeek).toEqual([]);
+    expect(result.tradeSize).toEqual([]);
+    expect(result.coin).toBe('BTC');
+    expect(result.status).toBe('closed');
+  });
+});
+
+describe('serializeFilterStateToSearchParams — 8b array fields', () => {
+  it('omits keys when arrays are empty', () => {
+    const params = serializeFilterStateToSearchParams(DEFAULT_FILTER_STATE);
+    expect(params.has('hold')).toBe(false);
+    expect(params.has('tod')).toBe(false);
+    expect(params.has('dow')).toBe(false);
+    expect(params.has('size')).toBe(false);
+  });
+
+  it('writes hold list comma-joined in canonical order', () => {
+    const state = toggleHoldDuration(
+      toggleHoldDuration(DEFAULT_FILTER_STATE, 'position'),
+      'scalp',
+    );
+    const params = serializeFilterStateToSearchParams(state);
+    expect(params.get('hold')).toBe('scalp,position');
+  });
+
+  it('canonicalizes regardless of selection order', () => {
+    const a = toggleHoldDuration(
+      toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp'),
+      'intraday',
+    );
+    const b = toggleHoldDuration(
+      toggleHoldDuration(DEFAULT_FILTER_STATE, 'intraday'),
+      'scalp',
+    );
+    expect(serializeFilterStateToSearchParams(a).get('hold')).toBe(
+      serializeFilterStateToSearchParams(b).get('hold'),
+    );
+  });
+
+  it('writes dow in Mon→Sun order', () => {
+    let s = DEFAULT_FILTER_STATE;
+    s = toggleDayOfWeek(s, 'fri');
+    s = toggleDayOfWeek(s, 'mon');
+    s = toggleDayOfWeek(s, 'wed');
+    expect(serializeFilterStateToSearchParams(s).get('dow')).toBe('mon,wed,fri');
+  });
+});
+
+describe('round-trip identity — 8b states', () => {
+  const cases: Array<[string, FilterState]> = [
+    [
+      'hold + size',
+      (() => {
+        let s = DEFAULT_FILTER_STATE;
+        s = toggleHoldDuration(s, 'scalp');
+        s = toggleHoldDuration(s, 'intraday');
+        s = toggleTradeSize(s, 'large');
+        return s;
+      })(),
+    ],
+    [
+      'tod + dow',
+      (() => {
+        let s = DEFAULT_FILTER_STATE;
+        s = toggleTimeOfDay(s, 'morning');
+        s = toggleTimeOfDay(s, 'evening');
+        s = toggleDayOfWeek(s, 'mon');
+        s = toggleDayOfWeek(s, 'fri');
+        return s;
+      })(),
+    ],
+    [
+      '8a + 8b combined',
+      (() => {
+        let s = setCoin(DEFAULT_FILTER_STATE, 'BTC');
+        s = setSide(s, 'long');
+        s = toggleHoldDuration(s, 'intraday');
+        s = toggleTimeOfDay(s, 'morning');
+        return s;
+      })(),
+    ],
+  ];
+
+  it.each(cases)('%s round-trips', (_label, state) => {
+    const params = serializeFilterStateToSearchParams(state);
+    const parsed = parseFilterStateFromSearchParams(params);
+    expect(serializeFilterStateToSearchParams(parsed).toString()).toBe(
+      params.toString(),
+    );
+  });
+});

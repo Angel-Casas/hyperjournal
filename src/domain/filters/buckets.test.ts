@@ -15,12 +15,14 @@ import {
 describe('HOLD_DURATION_BUCKETS', () => {
   it('is contiguous (each maxMs equals the next minMs)', () => {
     for (let i = 0; i < HOLD_DURATION_BUCKETS.length - 1; i++) {
-      expect(HOLD_DURATION_BUCKETS[i].maxMs).toBe(HOLD_DURATION_BUCKETS[i + 1].minMs);
+      expect(HOLD_DURATION_BUCKETS[i]!.maxMs).toBe(
+        HOLD_DURATION_BUCKETS[i + 1]!.minMs,
+      );
     }
   });
 
   it('starts at 0 and ends at +Infinity', () => {
-    expect(HOLD_DURATION_BUCKETS[0].minMs).toBe(0);
+    expect(HOLD_DURATION_BUCKETS[0]!.minMs).toBe(0);
     expect(HOLD_DURATION_BUCKETS.at(-1)!.maxMs).toBe(Number.POSITIVE_INFINITY);
   });
 
@@ -31,10 +33,12 @@ describe('HOLD_DURATION_BUCKETS', () => {
 
 describe('TIME_OF_DAY_BANDS', () => {
   it('is contiguous and covers 0..24', () => {
-    expect(TIME_OF_DAY_BANDS[0].startHour).toBe(0);
+    expect(TIME_OF_DAY_BANDS[0]!.startHour).toBe(0);
     expect(TIME_OF_DAY_BANDS.at(-1)!.endHour).toBe(24);
     for (let i = 0; i < TIME_OF_DAY_BANDS.length - 1; i++) {
-      expect(TIME_OF_DAY_BANDS[i].endHour).toBe(TIME_OF_DAY_BANDS[i + 1].startHour);
+      expect(TIME_OF_DAY_BANDS[i]!.endHour).toBe(
+        TIME_OF_DAY_BANDS[i + 1]!.startHour,
+      );
     }
   });
 
@@ -54,11 +58,13 @@ describe('DAY_OF_WEEK_LABELS', () => {
 
 describe('TRADE_SIZE_BUCKETS', () => {
   it('is contiguous and ends at +Infinity', () => {
-    expect(TRADE_SIZE_BUCKETS[0].minNotional).toBe(0);
-    expect(TRADE_SIZE_BUCKETS.at(-1)!.maxNotional).toBe(Number.POSITIVE_INFINITY);
+    expect(TRADE_SIZE_BUCKETS[0]!.minNotional).toBe(0);
+    expect(TRADE_SIZE_BUCKETS.at(-1)!.maxNotional).toBe(
+      Number.POSITIVE_INFINITY,
+    );
     for (let i = 0; i < TRADE_SIZE_BUCKETS.length - 1; i++) {
-      expect(TRADE_SIZE_BUCKETS[i].maxNotional).toBe(
-        TRADE_SIZE_BUCKETS[i + 1].minNotional,
+      expect(TRADE_SIZE_BUCKETS[i]!.maxNotional).toBe(
+        TRADE_SIZE_BUCKETS[i + 1]!.minNotional,
       );
     }
   });

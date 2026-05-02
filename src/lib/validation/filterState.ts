@@ -1,17 +1,49 @@
 import { z } from 'zod';
 import {
   DEFAULT_FILTER_STATE,
+  HOLD_DURATION_ORDER,
+  TIME_OF_DAY_ORDER,
+  DAY_OF_WEEK_ORDER,
+  TRADE_SIZE_ORDER,
   type DateRangePreset,
+  type DayOfWeek,
   type FilterState,
+  type HoldDurationBucket,
   type Outcome,
   type Side,
   type Status,
+  type TimeOfDayBand,
+  type TradeSizeBucket,
 } from '@entities/filter-state';
 
 const PresetSchema = z.enum(['7d', '30d', '90d', '1y']);
 const SideSchema = z.enum(['long', 'short']);
 const StatusSchema = z.enum(['closed', 'open']);
 const OutcomeSchema = z.enum(['winner', 'loser']);
+
+const HoldDurationSchema = z.enum(['scalp', 'intraday', 'swing', 'position']);
+const TimeOfDayBandSchema = z.enum([
+  'overnight',
+  'morning',
+  'afternoon',
+  'evening',
+]);
+const DayOfWeekSchema = z.enum([
+  'mon',
+  'tue',
+  'wed',
+  'thu',
+  'fri',
+  'sat',
+  'sun',
+]);
+const TradeSizeBucketSchema = z.enum([
+  'micro',
+  'small',
+  'medium',
+  'large',
+  'whale',
+]);
 
 // YYYY-MM-DD with valid month/day. Mirrors @domain/dates/isValidDateString
 // without crossing the lib → domain boundary.
@@ -31,8 +63,33 @@ export function parseFilterStateFromSearchParams(
   const status = parseEnumOr(params.get('status'), StatusSchema, 'all') as Status;
   const outcome = parseEnumOr(params.get('outcome'), OutcomeSchema, 'all') as Outcome;
   const dateRange = parseDateRange(params);
-
-  return { coin, side, status, outcome, dateRange };
+  const holdDuration = parseEnumArrayOr<HoldDurationBucket>(
+    params.get('hold'),
+    HoldDurationSchema,
+  );
+  const timeOfDay = parseEnumArrayOr<TimeOfDayBand>(
+    params.get('tod'),
+    TimeOfDayBandSchema,
+  );
+  const dayOfWeek = parseEnumArrayOr<DayOfWeek>(
+    params.get('dow'),
+    DayOfWeekSchema,
+  );
+  const tradeSize = parseEnumArrayOr<TradeSizeBucket>(
+    params.get('size'),
+    TradeSizeBucketSchema,
+  );
+  return {
+    coin,
+    side,
+    status,
+    outcome,
+    dateRange,
+    holdDuration,
+    timeOfDay,
+    dayOfWeek,
+    tradeSize,
+  };
 }
 
 function parseCoin(value: string | null): string | null {
@@ -48,6 +105,23 @@ function parseEnumOr<T extends z.ZodEnum<[string, ...string[]]>>(
   if (value === null) return fallback;
   const result = schema.safeParse(value);
   return result.success ? result.data : fallback;
+}
+
+function parseEnumArrayOr<T extends string>(
+  raw: string | null,
+  schema: z.ZodEnum<[string, ...string[]]>,
+): ReadonlyArray<T> {
+  if (raw === null || raw === '') return [];
+  const out: Array<T> = [];
+  const seen = new Set<string>();
+  for (const tok of raw.split(',')) {
+    const r = schema.safeParse(tok);
+    if (r.success && !seen.has(r.data)) {
+      seen.add(r.data);
+      out.push(r.data as T);
+    }
+  }
+  return out;
 }
 
 function parseDateRange(params: URLSearchParams): FilterState['dateRange'] {
@@ -67,6 +141,14 @@ function parseDateRange(params: URLSearchParams): FilterState['dateRange'] {
   return DEFAULT_FILTER_STATE.dateRange;
 }
 
+function sortByCanonical<T extends string>(
+  arr: ReadonlyArray<T>,
+  order: ReadonlyArray<T>,
+): ReadonlyArray<T> {
+  const idx = new Map(order.map((id, i) => [id, i] as const));
+  return [...arr].sort((a, b) => (idx.get(a) ?? 0) - (idx.get(b) ?? 0));
+}
+
 export function serializeFilterStateToSearchParams(
   state: FilterState,
 ): URLSearchParams {
@@ -80,6 +162,30 @@ export function serializeFilterStateToSearchParams(
     params.set('to', state.dateRange.to);
   } else if (state.dateRange.preset !== 'all') {
     params.set('range', state.dateRange.preset);
+  }
+  if (state.holdDuration.length > 0) {
+    params.set(
+      'hold',
+      sortByCanonical(state.holdDuration, HOLD_DURATION_ORDER).join(','),
+    );
+  }
+  if (state.timeOfDay.length > 0) {
+    params.set(
+      'tod',
+      sortByCanonical(state.timeOfDay, TIME_OF_DAY_ORDER).join(','),
+    );
+  }
+  if (state.dayOfWeek.length > 0) {
+    params.set(
+      'dow',
+      sortByCanonical(state.dayOfWeek, DAY_OF_WEEK_ORDER).join(','),
+    );
+  }
+  if (state.tradeSize.length > 0) {
+    params.set(
+      'size',
+      sortByCanonical(state.tradeSize, TRADE_SIZE_ORDER).join(','),
+    );
   }
   return params;
 }
