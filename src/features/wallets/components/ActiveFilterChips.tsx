@@ -1,6 +1,11 @@
+import type { ReactNode } from 'react';
 import { FilterChip } from '@lib/ui/components/filter-chip';
 import {
   DEFAULT_FILTER_STATE,
+  clearDayOfWeek,
+  clearHoldDuration,
+  clearTimeOfDay,
+  clearTradeSize,
   isDefault,
   setCoin,
   setDateRangePreset,
@@ -9,7 +14,23 @@ import {
   setStatus,
   type DateRangePreset,
   type FilterState,
+  type DayOfWeek,
+  type HoldDurationBucket,
+  type TimeOfDayBand,
+  type TradeSizeBucket,
 } from '@domain/filters/filterState';
+import {
+  HOLD_DURATION_ORDER,
+  TIME_OF_DAY_ORDER,
+  DAY_OF_WEEK_ORDER,
+  TRADE_SIZE_ORDER,
+} from '@entities/filter-state';
+import {
+  HOLD_DURATION_BUCKETS,
+  TIME_OF_DAY_BANDS,
+  DAY_OF_WEEK_LABELS,
+  TRADE_SIZE_BUCKETS,
+} from '@domain/filters/buckets';
 
 type Props = {
   state: FilterState;
@@ -23,7 +44,6 @@ const PRESET_LABELS: Record<DateRangePreset, string> = {
   '1y': 'Last year',
   all: 'All time',
 };
-
 const SIDE_LABELS: Record<'all' | 'long' | 'short', string> = {
   all: 'All',
   long: 'Long',
@@ -39,6 +59,46 @@ const OUTCOME_LABELS: Record<'all' | 'winner' | 'loser', string> = {
   winner: 'Winners',
   loser: 'Losers',
 };
+
+const HOLD_LABEL: Record<HoldDurationBucket, string> = Object.fromEntries(
+  HOLD_DURATION_BUCKETS.map((b) => [b.id, b.label]),
+) as Record<HoldDurationBucket, string>;
+const TOD_LABEL: Record<TimeOfDayBand, string> = Object.fromEntries(
+  TIME_OF_DAY_BANDS.map((b) => [b.id, b.label]),
+) as Record<TimeOfDayBand, string>;
+const SIZE_LABEL: Record<TradeSizeBucket, string> = Object.fromEntries(
+  TRADE_SIZE_BUCKETS.map((b) => [b.id, b.label]),
+) as Record<TradeSizeBucket, string>;
+
+function sortBy<T extends string>(
+  arr: ReadonlyArray<T>,
+  order: ReadonlyArray<T>,
+): ReadonlyArray<T> {
+  const idx = new Map(order.map((id, i) => [id, i] as const));
+  return [...arr].sort((a, b) => (idx.get(a) ?? 0) - (idx.get(b) ?? 0));
+}
+
+function renderArrayChip<T extends string>(
+  dimensionLabel: string,
+  selected: ReadonlyArray<T>,
+  order: ReadonlyArray<T>,
+  bucketLabel: (id: T) => string,
+  onClear: () => void,
+): ReactNode {
+  if (selected.length === 0) return null;
+  const sorted = sortBy(selected, order);
+  const inline =
+    selected.length <= 3
+      ? `${dimensionLabel}: ${sorted.map(bucketLabel).join(', ')}`
+      : `${dimensionLabel}: ${selected.length} selected`;
+  return (
+    <FilterChip
+      label={inline}
+      onRemove={onClear}
+      ariaLabel={`Remove ${dimensionLabel.toLowerCase()} filter`}
+    />
+  );
+}
 
 export function ActiveFilterChips({ state, onChange }: Props) {
   if (isDefault(state)) return null;
@@ -85,6 +145,34 @@ export function ActiveFilterChips({ state, onChange }: Props) {
           onRemove={() => onChange(setDateRangePreset(state, 'all'))}
           ariaLabel="Remove date range filter"
         />
+      )}
+      {renderArrayChip<HoldDurationBucket>(
+        'Hold',
+        state.holdDuration,
+        HOLD_DURATION_ORDER,
+        (id) => HOLD_LABEL[id],
+        () => onChange(clearHoldDuration(state)),
+      )}
+      {renderArrayChip<TimeOfDayBand>(
+        'Time',
+        state.timeOfDay,
+        TIME_OF_DAY_ORDER,
+        (id) => TOD_LABEL[id],
+        () => onChange(clearTimeOfDay(state)),
+      )}
+      {renderArrayChip<DayOfWeek>(
+        'Day',
+        state.dayOfWeek,
+        DAY_OF_WEEK_ORDER,
+        (id) => DAY_OF_WEEK_LABELS[id],
+        () => onChange(clearDayOfWeek(state)),
+      )}
+      {renderArrayChip<TradeSizeBucket>(
+        'Size',
+        state.tradeSize,
+        TRADE_SIZE_ORDER,
+        (id) => SIZE_LABEL[id],
+        () => onChange(clearTradeSize(state)),
       )}
       <button
         type="button"

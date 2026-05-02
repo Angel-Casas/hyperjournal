@@ -63,3 +63,61 @@ describe('ActiveFilterChips', () => {
     expect(screen.getByText('2026-01-01 – 2026-04-28')).toBeInTheDocument();
   });
 });
+
+import {
+  toggleHoldDuration,
+  toggleDayOfWeek,
+  toggleTradeSize,
+} from '@domain/filters/filterState';
+
+describe('ActiveFilterChips — 8b multi-select rendering', () => {
+  it('renders no chip for empty arrays', () => {
+    render(
+      <ActiveFilterChips state={DEFAULT_FILTER_STATE} onChange={() => {}} />,
+    );
+    expect(screen.queryByText(/hold/i)).toBeNull();
+  });
+
+  it('renders inline list for 1–3 buckets', () => {
+    let state = toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp');
+    state = toggleHoldDuration(state, 'intraday');
+    render(<ActiveFilterChips state={state} onChange={() => {}} />);
+    expect(
+      screen.getByText(/hold:\s*scalp,\s*intraday/i),
+    ).toBeInTheDocument();
+  });
+
+  it('renders count summary for 4+ buckets', () => {
+    let state = DEFAULT_FILTER_STATE;
+    state = toggleDayOfWeek(state, 'mon');
+    state = toggleDayOfWeek(state, 'tue');
+    state = toggleDayOfWeek(state, 'wed');
+    state = toggleDayOfWeek(state, 'thu');
+    state = toggleDayOfWeek(state, 'fri');
+    render(<ActiveFilterChips state={state} onChange={() => {}} />);
+    expect(screen.getByText(/day:\s*5 selected/i)).toBeInTheDocument();
+  });
+
+  it('chip X clears the entire dimension', async () => {
+    const user = userEvent.setup();
+    let state = toggleHoldDuration(DEFAULT_FILTER_STATE, 'scalp');
+    state = toggleHoldDuration(state, 'intraday');
+    const onChange = vi.fn();
+    render(<ActiveFilterChips state={state} onChange={onChange} />);
+    await user.click(screen.getByLabelText(/remove hold/i));
+    expect(onChange).toHaveBeenCalledWith({
+      ...state,
+      holdDuration: [],
+    });
+  });
+
+  it('renders inline list in canonical order regardless of selection order', () => {
+    let state = toggleTradeSize(DEFAULT_FILTER_STATE, 'whale');
+    state = toggleTradeSize(state, 'small');
+    state = toggleTradeSize(state, 'medium');
+    render(<ActiveFilterChips state={state} onChange={() => {}} />);
+    expect(
+      screen.getByText(/size:\s*small,\s*medium,\s*whale/i),
+    ).toBeInTheDocument();
+  });
+});
